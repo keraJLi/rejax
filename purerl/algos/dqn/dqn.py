@@ -103,13 +103,15 @@ def train(config, rng):
 
 
 def train_iteration(config, ts):
+    start_training = ts.global_step > config.fill_buffer
+    old_global_step = ts.global_step
+
     # Calculate epsilon
     epsilon = config.epsilon_schedule(ts.global_step)
 
     # Collect transitions
-    # old_global_step is to determine if we should update target network
-    old_global_step = ts.global_step
-    ts, batch = collect_transitions(config, ts, epsilon)
+    uniform = jnp.logical_not(start_training)
+    ts, batch = collect_transitions(config, ts, epsilon, uniform=uniform)
     ts = ts.replace(replay_buffer=ts.replay_buffer.extend(batch))
 
     # Perform updates to q network
@@ -127,12 +129,7 @@ def train_iteration(config, ts):
             0, config.gradient_steps, lambda _, ts: update_iteration(ts), ts
         )
 
-    ts = jax.lax.cond(
-        ts.replay_buffer.num_entries > config.fill_buffer,
-        lambda ts: do_updates(ts),
-        lambda ts: ts,
-        ts,
-    )
+    ts = jax.lax.cond(start_training, lambda: do_updates(ts), lambda: ts)
 
     # Update target network
     update_target_params = (
@@ -149,12 +146,18 @@ def train_iteration(config, ts):
     return ts
 
 
-def collect_transitions(config, ts, epsilon):
+def collect_transitions(config, ts, epsilon, uniform=False):
     # Sample actions
     ts, rng_action = ts.get_rng()
-    actions = ts.apply_fn(
-        ts.params, ts.last_obs, rng_action, epsilon=epsilon, method="act"
-    )
+
+    def sample_uniform(rng):
+        sample_fn = config.env.action_space(config.env_params).sample
+        return jax.vmap(sample_fn)(jax.random.split(rng, config.num_envs))
+
+    def sample_policy(rng):
+        return ts.apply_fn(ts.params, ts.last_obs, rng, epsilon=epsilon, method="act")
+
+    actions = jax.lax.cond(uniform, sample_uniform, sample_policy, rng_action)
 
     ts, rng_steps = ts.get_rng()
     rng_steps = jax.random.split(rng_steps, config.num_envs)

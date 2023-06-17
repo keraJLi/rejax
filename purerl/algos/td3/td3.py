@@ -138,11 +138,18 @@ def initialize_train_state(config, rng):
 
 
 def train_iteration(config, ts):
+    start_training = ts.global_step > config.fill_buffer
+
     # Collect transition
     ts, rng = ts.get_rng()
-    rng_step, rng_noise = jax.random.split(rng)
+    rng_uniform, rng_noise, rng_step = jax.random.split(rng, 3)
 
-    action = ts.pi_ts.apply_fn(ts.pi_ts.params, ts.last_obs)
+    action = jax.lax.cond(
+        jnp.logical_not(start_training),
+        lambda rng: config.env.action_space(config.env_params).sample(rng),
+        lambda _: ts.pi_ts.apply_fn(ts.pi_ts.params, ts.last_obs),
+        rng_uniform,
+    )
     noise = config.exploration_noise * jax.random.normal(rng_noise, action.shape)
     action = jnp.clip(action + noise, config.action_low, config.action_high)
 
@@ -183,7 +190,7 @@ def train_iteration(config, ts):
     # TODO: is predicate of cond vmapped, i.e. converted to select? Would introduce
     # unnecessary computation
     ts = jax.lax.cond(
-        ts.replay_buffer.num_entries > config.fill_buffer,
+        start_training,
         lambda ts: update_iteration(ts),
         lambda ts: ts,
         ts,
