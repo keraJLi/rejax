@@ -1,0 +1,77 @@
+ppo:
+  env: Pendulum-v1
+  env_kwargs: null
+  agent_kwargs:
+    activation: relu
+  num_envs: 5
+  num_steps: 100
+  num_epochs: 10
+  num_minibatches: 10
+  learning_rate: 0.0003
+  max_grad_norm: 10
+  total_timesteps: 200_000
+  eval_freq: 2000
+  gamma: 0.9
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+
+
+sac:
+  env: Pendulum-v1
+  env_kwargs: null
+  agent_kwargs:
+    activation: tanh
+  num_envs: 1
+  buffer_size: 10_000
+  fill_buffer: 256
+  batch_size: 256
+  learning_rate: 0.001
+  gradient_steps: 1
+  total_timesteps: 10_000
+  eval_freq: 100
+  gamma: 0.99
+  tau: 0.995
+  target_entropy_ratio: null
+
+
+ddpg:
+  env: Pendulum-v1
+  env_kwargs: null
+  agent_kwargs:
+    activation: tanh
+  num_envs: 1
+  buffer_size: 5_000
+  fill_buffer: 1000
+  batch_size: 100
+  learning_rate: 0.001
+  gradient_steps: 1
+  total_timesteps: 10_000
+  eval_freq: 100
+  gamma: 0.98
+  tau: 0.995
+  max_grad_norm: 10
+  exploration_noise: 0.2
+
+
+td3:
+  env: Pendulum-v1
+  env_kwargs: null
+  actor_kwargs:
+      activation: relu
+  critic_kwargs:
+      activation: relu
+  buffer_size: 10_000
+  fill_buffer: 1000
+  batch_size: 100
+  learning_rate: 0.002
+  total_timesteps: 10_000
+  eval_freq: 100
+  gamma: 0.98
+  tau: 0.995
+  max_grad_norm: 10
+  exploration_noise: 0.2
+  target_noise: 0.2
+  target_noise_clip: 0.5
+  policy_delay: 2

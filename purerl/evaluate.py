@@ -1,0 +1,85 @@
+import jax
+import chex
+import jax.numpy as jnp
+from functools import partial
+from gymnax.environments import environment
+from typing import Any, NamedTuple, Callable, Tuple
+
+
+class EvalState(NamedTuple):
+    rng: chex.PRNGKey
+    env_state: Any
+    last_obs: chex.Array
+    done: bool = False
+    return_: float = 0.0
+    length: int = 0
+
+
+def evaluate_single(
+    act: Callable[[chex.Array, chex.PRNGKey], chex.Array],  # act(obs, rng) -> action
+    env,
+    env_params,
+    rng,
+    timeout,
+):
+    def step(state):
+        rng, rng_act, rng_step = jax.random.split(state.rng, 3)
+        action = act(state.last_obs, rng_act)
+        obs, env_state, reward, done, info = env.step(
+            rng_step, state.env_state, action, env_params
+        )
+        state = EvalState(
+            rng=rng,
+            env_state=env_state,
+            last_obs=obs,
+            done=done,
+            return_=state.return_ + reward.squeeze(),
+            length=state.length + 1,
+        )
+        return state
+
+    rng_reset, rng_eval = jax.random.split(rng)
+    obs, env_state = env.reset(rng_reset, env_params)
+    state = EvalState(rng_eval, env_state, obs)
+    state = jax.lax.while_loop(
+        lambda s: jnp.logical_and(s.length < timeout, jnp.logical_not(s.done)),
+        step,
+        state,
+    )
+    return state.length, state.return_
+
+
+@partial(jax.jit, static_argnames=("act", "env", "num_seeds"))
+def evaluate(
+    act: Callable[[chex.Array, chex.PRNGKey], chex.Array],
+    rng: chex.PRNGKey,
+    env: environment.Environment,
+    env_params: Any,
+    num_seeds: int,
+) -> Tuple[chex.Array, chex.Array]:
+    """Evaluate a policy given by `act` on `num_seeds` environments.
+
+    Args:
+        act (Callable[[chex.Array, chex.PRNGKey], chex.Array]): A policy represented as
+        a function of type (obs, rng) -> action.
+        rng (chex.PRNGKey): Initial seed, will be split into `num_seeds` seeds for
+        parallel evaluation.
+        env (environment.Environment): The environment to evaluate on.
+        env_params (Any): The parameters of the environment.
+        num_seeds (int): Number of initializations of the environment.
+
+    Returns:
+        Tuple[chex.Array, chex.Array]: Tuple of episode length and cumultative reward
+        for each seed.
+    """
+    seeds = jax.random.split(rng, num_seeds)
+    vmap_collect = jax.vmap(evaluate_single, in_axes=(None, None, None, 0, None))
+    # TODO: hardcoded episode length!
+    return vmap_collect(act, env, env_params, seeds, 500)
+
+
+def make_evaluate(env, env_params, num_seeds):
+    def _evaluate(act, rng):
+        return evaluate(act, rng, env, env_params, num_seeds)
+
+    return _evaluate
