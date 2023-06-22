@@ -267,7 +267,7 @@ class SACAgentDiscrete(nn.Module):
         action, action_logprobs = self.actor(obs, rng)
         return action, action_logprobs
 
-    def q_all(self, obs, action):
+    def q_all(self, obs, *args):
         # action is passed by the algorithm since it works for both discrete and
         # continuous. This should be fixed later
         q1 = self.q1(obs)
