@@ -14,6 +14,8 @@ class DQNConfig(struct.PyTreeNode):
     ddqn: bool
     max_grad_norm: chex.Scalar
     learning_rate: chex.Scalar
+    eps_start: chex.Scalar
+    eps_end: chex.Scalar
     target_update_freq: int
 
     # Static parameters
@@ -23,8 +25,6 @@ class DQNConfig(struct.PyTreeNode):
     env: Environment = struct.field(pytree_node=False)
     evaluate: Callable = struct.field(pytree_node=False)
     exploration_fraction: chex.Scalar = struct.field(pytree_node=False)
-    eps_start: chex.Scalar = struct.field(pytree_node=False)
-    eps_end: chex.Scalar = struct.field(pytree_node=False)
     num_envs: int = struct.field(pytree_node=False)
     buffer_size: int = struct.field(pytree_node=False)
     fill_buffer: int = struct.field(pytree_node=False)
