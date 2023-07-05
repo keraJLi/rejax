@@ -57,13 +57,12 @@ class SACConfig(struct.PyTreeNode):
         from purerl.evaluate import make_evaluate
 
         # Get env id and convert to gymnax environment and parameters
-        env_kwargs = config.pop("env_kwargs") or {}
-        env_id = config.pop("env")
-        env, env_params = gymnax.make(env_id, **env_kwargs)
+        env_kwargs = config.pop("env_kwargs", None) or {}
+        env, env_params = gymnax.make(config.pop("env"), **env_kwargs)
 
         action_space = env.action_space(env_params)
         discrete = isinstance(action_space, gymnax.environments.spaces.Discrete)
-        agent_kwargs = config.pop("agent_kwargs") or {}
+        agent_kwargs = config.pop("agent_kwargs", None) or {}
 
         if discrete:
             agent_cls = SACAgentDiscrete

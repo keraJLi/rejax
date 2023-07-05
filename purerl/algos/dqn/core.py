@@ -45,7 +45,7 @@ class DQNConfig(struct.PyTreeNode):
         from purerl.evaluate import make_evaluate
 
         # Get env id and convert to gymnax environment and parameters
-        env_kwargs = config.pop("env_kwargs") or {}
+        env_kwargs = config.pop("env_kwargs", None) or {}
         env, env_params = gymnax.make(config.pop("env"), **env_kwargs)
 
         agent_name = config.pop("agent", "QNetwork")
@@ -54,7 +54,7 @@ class DQNConfig(struct.PyTreeNode):
             "DuelingQNetwork": DuelingQNetwork,
             "ConvQNetwork": ConvQNetwork,
         }[agent_name]
-        agent_kwargs = config.pop("agent_kwargs") or {}
+        agent_kwargs = config.pop("agent_kwargs", None) or {}
         activation = agent_kwargs.pop("activation", "relu")
         agent_kwargs["activation"] = getattr(nn, activation)
 

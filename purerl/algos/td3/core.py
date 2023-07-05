@@ -48,11 +48,11 @@ class TD3Config(struct.PyTreeNode):
         from purerl.evaluate import make_evaluate
 
         # Get env id and convert to gymnax environment and parameters
-        env_kwargs = config.pop("env_kwargs") or {}
+        env_kwargs = config.pop("env_kwargs", None) or {}
         env, env_params = gymnax.make(config.pop("env"), **env_kwargs)
 
-        actor_kwargs = config.pop("actor_kwargs") or {}
-        activation = actor_kwargs.pop("activation")
+        actor_kwargs = config.pop("actor_kwargs", None) or {}
+        activation = actor_kwargs.pop("activation", "relu")
         actor_kwargs["activation"] = getattr(nn, activation)
         action_range = (
             env.action_space(env_params).low,
