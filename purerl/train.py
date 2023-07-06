@@ -11,17 +11,32 @@ def main(algo_str, config, seed_id, time_fit):
     train_config = config_cls.from_dict(config)
 
     # Train it
-    num_seeds = 10
+    num_seeds = 5
     key = jax.random.PRNGKey(seed_id)
     keys = jax.random.split(key, num_seeds)
 
-    vmap_train = jax.vmap(train_fn, in_axes=(None, 0))
-    _, (_, returns) = vmap_train(train_config, keys)
+    param = "gamma"
+    param_values = jnp.array([1.0, 0.99, 0.95, 0.9, 0.8])
+    train_config = train_config.replace(**{param: param_values})
+    axes = jax.tree_map(lambda _: None, train_config).replace(**{param: 0})
 
-    colors = plt.cm.cool(jnp.linspace(0, 1, num_seeds))
-    for i in range(num_seeds):
-        plt.plot(returns.mean(axis=-1)[i], c=colors[i])
+    vmap_train = jax.vmap(train_fn, in_axes=(axes, None))
+    vmap_train = jax.vmap(vmap_train, in_axes=(None, 0))
+    _, (_, returns) = vmap_train(train_config, keys)
+    returns = returns.mean(axis=-1)
+
+    for i in range(len(param_values)):
+        plt.plot(returns[:, i].mean(axis=0), c=f"C{i}", label=param_values[i])
+        for j in range(num_seeds):
+            plt.plot(returns[j, i], c=f"C{i}", alpha=0.1)
+
+    plt.legend(title=param)
     plt.show()
+
+    # colors = plt.cm.cool(jnp.linspace(0, 1, num_seeds))
+    # for i in range(num_seeds):
+    #     plt.plot(returns.mean(axis=-1)[i], c=colors[i])
+    # plt.show()
 
     if time_fit:
         print("Fitting 3 times, getting a mean time of... ", end="", flush=True)
