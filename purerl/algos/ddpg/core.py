@@ -51,7 +51,7 @@ class DDPGConfig(struct.PyTreeNode):
             env = Brax2GymnaxEnv(env_id.split("/")[1], **env_kwargs)
             env_params = env.default_params
         else:
-            env, env_params = gymnax.make(config.pop("env"), **env_kwargs)
+            env, env_params = gymnax.make(env_id, **env_kwargs)
 
         agent_kwargs = config.pop("agent_kwargs", None) or {}
         activation = agent_kwargs.pop("activation", "relu")

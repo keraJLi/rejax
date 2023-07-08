@@ -67,7 +67,7 @@ class SACConfig(struct.PyTreeNode):
             env = Brax2GymnaxEnv(env_id.split("/")[1], **env_kwargs)
             env_params = env.default_params
         else:
-            env, env_params = gymnax.make(config.pop("env"), **env_kwargs)
+            env, env_params = gymnax.make(env_id, **env_kwargs)
 
         action_space = env.action_space(env_params)
         discrete = isinstance(action_space, gymnax.environments.spaces.Discrete)
