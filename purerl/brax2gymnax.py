@@ -14,14 +14,12 @@ class EnvParams:
 
 class Brax2GymnaxEnv(GymnaxEnv):
     def __init__(self, env_id: str, **kwargs):
-        max_steps_in_episode = kwargs.pop("episode_length", 1000)
-        self.env = create(env_id, episode_length=max_steps_in_episode, **kwargs)
+        self.max_steps_in_episode = kwargs.pop("episode_length", 1000)
+        self.env = create(env_id, episode_length=self.max_steps_in_episode, **kwargs)
 
     @property
     def default_params(self):
-        if hasattr(self.env, "episode_length"):
-            return EnvParams(max_steps_in_episode=self.env.episode_length)
-        return EnvParams(max_steps_in_episode=1000)
+        return EnvParams(max_steps_in_episode=self.max_steps_in_episode)
 
     def step_env(self, key, state, action, params):
         state = self.env.step(state, action)

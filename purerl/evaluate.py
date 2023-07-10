@@ -20,7 +20,7 @@ def evaluate_single(
     env,
     env_params,
     rng,
-    timeout,
+    max_steps_in_episode,
 ):
     def step(state):
         rng, rng_act, rng_step = jax.random.split(state.rng, 3)
@@ -42,7 +42,9 @@ def evaluate_single(
     obs, env_state = env.reset(rng_reset, env_params)
     state = EvalState(rng_eval, env_state, obs)
     state = jax.lax.while_loop(
-        lambda s: jnp.logical_and(s.length < timeout, jnp.logical_not(s.done)),
+        lambda s: jnp.logical_and(
+            s.length < max_steps_in_episode, jnp.logical_not(s.done)
+        ),
         step,
         state,
     )
@@ -56,6 +58,7 @@ def evaluate(
     env: environment.Environment,
     env_params: Any,
     num_seeds: int,
+    max_steps_in_episode: int,
 ) -> Tuple[chex.Array, chex.Array]:
     """Evaluate a policy given by `act` on `num_seeds` environments.
 
@@ -75,11 +78,14 @@ def evaluate(
     seeds = jax.random.split(rng, num_seeds)
     vmap_collect = jax.vmap(evaluate_single, in_axes=(None, None, None, 0, None))
     # TODO: hardcoded episode length!
-    return vmap_collect(act, env, env_params, seeds, 500)
+    return vmap_collect(act, env, env_params, seeds, max_steps_in_episode)
 
 
-def make_evaluate(env, env_params, num_seeds):
+def make_evaluate(env, env_params, num_seeds, max_steps_in_episode=None):
+    if max_steps_in_episode is None:
+        max_steps_in_episode = env_params.max_steps_in_episode
+
     def _evaluate(act, rng):
-        return evaluate(act, rng, env, env_params, num_seeds)
+        return evaluate(act, rng, env, env_params, num_seeds, max_steps_in_episode)
 
     return _evaluate
