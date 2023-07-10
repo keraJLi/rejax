@@ -8,7 +8,6 @@ from purerl.algos import get_agent
 
 def main(algo_str, config, seed_id, num_seeds, time_fit):
     train_fn, config_cls = get_agent(algo_str)
-    config["env"] = "brax/hopper"
     train_config = config_cls.from_dict(config)
 
     # Train it

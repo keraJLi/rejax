@@ -56,3 +56,14 @@ sac:
   gamma: 1.0
   tau: 0.8
   target_entropy_ratio: 0.5
+
+es:
+  env: MountainCar-v0
+  agent_kwargs:
+    features: [32]
+  num_generations: 100
+  eval_freq: 1
+  strategy: SNES
+  strategy_kwargs:
+    popsize: 50
+  num_rollouts: 8

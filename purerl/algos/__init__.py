@@ -13,6 +13,9 @@ from purerl.algos.ddpg.core import DDPGConfig
 from purerl.algos.td3.td3 import train as train_td3
 from purerl.algos.td3.core import TD3Config
 
+from purerl.algos.es.es import train as train_es
+from purerl.algos.es.core import ESConfig
+
 
 _agents = {
     "ppo": (train_ppo, PPOConfig),
@@ -20,6 +23,7 @@ _agents = {
     "sac": (train_sac, SACConfig),
     "ddpg": (train_ddpg, DDPGConfig),
     "td3": (train_td3, TD3Config),
+    "es": (train_es, ESConfig),
 }
 
 
@@ -41,4 +45,6 @@ __all__ = [
     "DDPGConfig",
     "train_td3",
     "TD3Config",
+    "train_es",
+    "ESConfig",
 ]
