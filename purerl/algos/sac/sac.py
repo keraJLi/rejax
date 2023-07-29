@@ -36,7 +36,9 @@ def evaluate(config, ts):
 @jax.jit
 def train(config, rng):
     ts = initialize_train_state(config, rng)
-    initial_evaluation = evaluate(config, ts)
+
+    if not config.skip_initial_evaluation:
+        initial_evaluation = evaluate(config, ts)
 
     def eval_iteration(ts, unused):
         # Run a few training iterations
@@ -57,12 +59,14 @@ def train(config, rng):
         np.ceil(config.total_timesteps / config.eval_freq).astype(int),
     )
 
-    all_evaluations = jax.tree_map(
-        lambda i, ev: jnp.concatenate((jnp.expand_dims(i, 0), ev)),
-        initial_evaluation,
-        evaluation,
-    )
-    return ts, all_evaluations
+    if not config.skip_initial_evaluation:
+        evaluation = jax.tree_map(
+            lambda i, ev: jnp.concatenate((jnp.expand_dims(i, 0), ev)),
+            initial_evaluation,
+            evaluation,
+        )
+
+    return ts, evaluation
 
 
 def initialize_train_state(config, rng):
@@ -103,6 +107,8 @@ def initialize_train_state(config, rng):
 def train_iteration(config, ts):
     # Collect transitions
     ts, transitions = collect_transitions(config, ts)
+    # print(transitions)
+    # jax.debug.print("{}", transitions)
     ts = ts.replace(replay_buffer=ts.replay_buffer.extend(transitions))
 
     # Perform updates to citics, actor and alpha

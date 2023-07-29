@@ -30,6 +30,7 @@ class DQNConfig(struct.PyTreeNode):
     fill_buffer: int = struct.field(pytree_node=False)
     batch_size: int = struct.field(pytree_node=False)
     gradient_steps: int = struct.field(pytree_node=False)
+    skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
 
     @property
     def epsilon_schedule(self):

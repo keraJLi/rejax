@@ -29,6 +29,7 @@ class PPOConfig(struct.PyTreeNode):
     num_minibatches: int = struct.field(pytree_node=False)
     learning_rate: chex.Scalar = struct.field(pytree_node=False)
     max_grad_norm: chex.Scalar = struct.field(pytree_node=False)
+    skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
 
     @property
     def minibatch_size(self):
