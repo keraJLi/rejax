@@ -83,9 +83,10 @@ def train(config, rng):
     def eval_iteration(ts, unused):
         # Run a few training iterations
         iteration_steps = config.num_envs * config.num_steps
+        num_iterations = np.ceil(config.eval_freq / iteration_steps).astype(int)
         ts = jax.lax.fori_loop(
             0,
-            np.ceil(config.eval_freq / iteration_steps).astype(int),
+            num_iterations,
             lambda _, ts: train_iteration(config, ts),
             ts,
         )

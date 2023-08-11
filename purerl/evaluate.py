@@ -77,7 +77,6 @@ def evaluate(
     """
     seeds = jax.random.split(rng, num_seeds)
     vmap_collect = jax.vmap(evaluate_single, in_axes=(None, None, None, 0, None))
-    # TODO: hardcoded episode length!
     return vmap_collect(act, env, env_params, seeds, max_steps_in_episode)
 
 

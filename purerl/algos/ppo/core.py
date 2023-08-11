@@ -16,6 +16,7 @@ class PPOConfig(struct.PyTreeNode):
     clip_eps: chex.Scalar
     vf_coef: chex.Scalar
     ent_coef: chex.Scalar
+    learning_rate: chex.Scalar
 
     # Static parameters
     total_timesteps: int = struct.field(pytree_node=False)
@@ -27,7 +28,6 @@ class PPOConfig(struct.PyTreeNode):
     num_steps: int = struct.field(pytree_node=False)
     num_epochs: int = struct.field(pytree_node=False)
     num_minibatches: int = struct.field(pytree_node=False)
-    learning_rate: chex.Scalar = struct.field(pytree_node=False)
     max_grad_norm: chex.Scalar = struct.field(pytree_node=False)
     skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
 
