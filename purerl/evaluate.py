@@ -84,7 +84,12 @@ def make_evaluate(env, env_params, num_seeds, max_steps_in_episode=None):
     if max_steps_in_episode is None:
         max_steps_in_episode = env_params.max_steps_in_episode
 
-    def _evaluate(act, rng):
+    def _evaluate(config, ts, rng):
+        def act(obs, rng):
+            obs = jnp.expand_dims(obs, 0)
+            action = config.agent.apply(ts.params, obs, rng, method="act")
+            return jnp.squeeze(action, 0)
+
         return evaluate(act, rng, env, env_params, num_seeds, max_steps_in_episode)
 
     return _evaluate

@@ -25,7 +25,7 @@ class SACConfig(struct.PyTreeNode):
     eval_freq: int = struct.field(pytree_node=False)
     agent: nn.Module = struct.field(pytree_node=False)
     env: Environment = struct.field(pytree_node=False)
-    evaluate: Callable = struct.field(pytree_node=False)
+    eval_callback: Callable = struct.field(pytree_node=False)
     num_envs: int = struct.field(pytree_node=False)
     buffer_size: int = struct.field(pytree_node=False)
     fill_buffer: int = struct.field(pytree_node=False)
@@ -94,7 +94,11 @@ class SACConfig(struct.PyTreeNode):
 
         evaluate = make_evaluate(env, env_params, 200)
         return cls(
-            env=env, env_params=env_params, agent=agent, evaluate=evaluate, **config
+            env=env,
+            env_params=env_params,
+            agent=agent,
+            eval_callback=evaluate,
+            **config,
         )
 
 

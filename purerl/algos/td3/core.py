@@ -24,7 +24,7 @@ class TD3Config(struct.PyTreeNode):
     actor: nn.Module = struct.field(pytree_node=False)
     critic: nn.Module = struct.field(pytree_node=False)
     env: Environment = struct.field(pytree_node=False)
-    evaluate: Callable = struct.field(pytree_node=False)
+    eval_callback: Callable = struct.field(pytree_node=False)
     buffer_size: int = struct.field(pytree_node=False)
     fill_buffer: int = struct.field(pytree_node=False)
     batch_size: int = struct.field(pytree_node=False)
@@ -32,7 +32,7 @@ class TD3Config(struct.PyTreeNode):
 
     @property
     def agent(self):
-        """ So that config.agent.apply exists """
+        """So that config.agent.apply exists"""
         return self.actor
 
     @property
@@ -87,8 +87,8 @@ class TD3Config(struct.PyTreeNode):
             actor=actor,
             critic=critic,
             env=env,
-            evaluate=evaluate,
-            **config
+            eval_callback=evaluate,
+            **config,
         )
 
 
@@ -105,7 +105,8 @@ class MLPQFunction(nn.Module):
 
 
 class TD3Actor(nn.Module):
-    """ Equivaluent to DDPGActor """
+    """Equivaluent to DDPGActor"""
+
     action_dim: int
     action_range: Tuple[float, float]
     activation: Callable = nn.relu

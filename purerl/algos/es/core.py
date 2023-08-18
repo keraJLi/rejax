@@ -18,7 +18,7 @@ class ESConfig(struct.PyTreeNode):
     eval_freq: int = struct.field(pytree_node=False)
     agent: nn.Module = struct.field(pytree_node=False)
     env: Environment = struct.field(pytree_node=False)
-    evaluate: Callable = struct.field(pytree_node=False)
+    eval_callback: Callable = struct.field(pytree_node=False)
     strategy: Callable = struct.field(pytree_node=False)
     strategy_params: chex.ArrayTree = struct.field(pytree_node=False)
     num_rollouts: int = struct.field(pytree_node=False)
@@ -76,7 +76,7 @@ class ESConfig(struct.PyTreeNode):
             env=env,
             env_params=env_params,
             agent=agent,
-            evaluate=evaluate,
+            eval_callback=evaluate,
             strategy=strategy,
             strategy_params=strategy.default_params,
             **config

@@ -1,16 +1,20 @@
 import jax
+import chex
 import numpy as np
 import jax.numpy as jnp
+from flax.core import FrozenDict
 from purerl.evaluate import evaluate as evaluate_act
 
 
 def evaluate(config, evo_state, rng):
+    # Mocks train state to ensure compatibility with evaluate.make_evaluate
+    # TODO: rewrite to avoid this (e.g. use ESTrainState globally)
+    class ESTrainState:
+        params: FrozenDict
+        evo_state: chex.ArrayTree
+
     params = config.strategy.param_reshaper.reshape_single(evo_state.best_member)
-
-    def act(obs, rng):
-        return config.agent.apply(params, obs, rng, method="act")
-
-    return config.evaluate(act, rng)
+    return config.eval_callback(config, ESTrainState(params, evo_state), rng)
 
 
 def evaluate_fitness(config, params, rng):

@@ -28,6 +28,7 @@ class PPOTrainState(TrainState):
     env_state: Any
     last_obs: chex.Array
     last_done: chex.Array
+    global_step: chex.Array
     rng: chex.PRNGKey
 
     def get_rng(self):
@@ -59,18 +60,10 @@ def initialize_train_state(config, rng):
         env_state=env_state,
         last_obs=obs,
         last_done=jnp.zeros(config.num_envs, dtype=bool),
+        global_step=0,
         rng=rng,
     )
     return train_state
-
-
-def evaluate(config, ts):
-    def act(obs, rng):
-        obs = jnp.expand_dims(obs, 0)
-        action = ts.apply_fn(ts.params, obs, rng, method="act")
-        return jnp.squeeze(action, 0)
-
-    return config.evaluate(act, ts.rng)
 
 
 @jax.jit
@@ -78,7 +71,7 @@ def train(config, rng):
     ts = initialize_train_state(config, rng)
 
     if not config.skip_initial_evaluation:
-        initial_evaluation = evaluate(config, ts)
+        initial_evaluation = config.eval_callback(config, ts, ts.rng)
 
     def eval_iteration(ts, unused):
         # Run a few training iterations
@@ -92,7 +85,7 @@ def train(config, rng):
         )
 
         # Run evaluation
-        return ts, evaluate(config, ts)
+        return ts, config.eval_callback(config, ts, ts.rng)
 
     ts, evaluation = jax.lax.scan(
         eval_iteration,
@@ -158,7 +151,12 @@ def collect_trajectories(config, ts):
 
         # Return updated runner state and transition
         transition = Trajectory(ts.last_obs, action, log_prob, reward, value, done)
-        ts = ts.replace(env_state=env_state, last_obs=next_obs, last_done=done)
+        ts = ts.replace(
+            env_state=env_state,
+            last_obs=next_obs,
+            last_done=done,
+            global_step=ts.global_step + config.num_envs,
+        )
         return ts, transition
 
     ts, trajectories = jax.lax.scan(env_step, ts, None, config.num_steps)

@@ -33,21 +33,12 @@ class TD3TrainState(struct.PyTreeNode):
         return self.pi_ts.params
 
 
-def evaluate(config, ts):
-    def act(obs, rng):
-        obs = jnp.expand_dims(obs, 0)
-        action = ts.pi_ts.apply_fn(ts.pi_ts.params, obs, rng, method="act")
-        return jnp.squeeze(action, 0)
-
-    return config.evaluate(act, ts.rng)
-
-
 @jax.jit
 def train(config, rng):
     ts = initialize_train_state(config, rng)
 
     if not config.skip_initial_evaluation:
-        initial_evaluation = evaluate(config, ts)
+        initial_evaluation = config.eval_callback(config, ts, ts.rng)
 
     def eval_iteration(ts, unused):
         # Run a few training iterations
@@ -59,7 +50,7 @@ def train(config, rng):
         )
 
         # Run evaluation
-        return ts, evaluate(config, ts)
+        return ts, config.eval_callback(config, ts, ts.rng)
 
     ts, evaluation = jax.lax.scan(
         eval_iteration,
