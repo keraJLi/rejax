@@ -25,6 +25,8 @@ class Logger:
         if not os.path.exists(folder):
             os.makedirs(folder)
 
+        print(f"Logging to {os.path.join(folder, name)}.{{json,ckpt}}")
+
     def log_once(self, data):
         self.metadata = {**self.metadata, **data}
         self.write_log()
@@ -43,17 +45,26 @@ class Logger:
         # Because of vmapping the training function, self.log is called several times
         # sequentially. Therefore we only log once we reach a new global_step
         if step > self.last_step:
-            data = jax.tree_map(convert, self._log_step)
-            data = pd.DataFrame(data).mean(axis=0).to_dict()
             process_time = time.process_time() - self.timer
-            data["time/process_time"] = process_time
 
-            self.write_log()
-            if self.use_wandb:
-                wandb.log(data, step=step)
+            # Compute mean over initial seeds for wandb, log all stuff for json
+            _log_step = jax.tree_map(convert, self._log_step)
+            _log_step = pd.DataFrame(_log_step)
 
-            self._log.append(data)
+            self._log.append(
+                {"time/process_time": process_time, **_log_step.to_dict("list")}
+            )
             self._log_step = []
+            self.write_log()
+
+            if self.use_wandb:
+                wandb.log(
+                    {
+                        "time/process_time": process_time,
+                        **_log_step.mean(axis=0).to_dict(),
+                    },
+                    step=step,
+                )
 
         self._log_step.append(data)
         self.last_step = step
@@ -144,10 +155,12 @@ def main(args, config):
     time_compile = time.process_time() - time_lower
     vmap_train = compiled
 
-    logger.log_once({
-        "time/lower": time_lower,
-        "time/compile": time_compile,
-    })
+    logger.log_once(
+        {
+            "time/lower": time_lower,
+            "time/compile": time_compile,
+        }
+    )
 
     # Train
     logger.reset_timer()
