@@ -55,7 +55,6 @@ class Logger:
                 {"time/process_time": process_time, **_log_step.to_dict("list")}
             )
             self._log_step = []
-            self.write_log()
 
             if self.use_wandb:
                 wandb.log(
@@ -70,7 +69,6 @@ class Logger:
         self.last_step = step
 
     def write_log(self):
-        start = time.process_time()
         file = os.path.join(self.folder, f"{self.name}.json")
         with open(file, "w+") as f:
             data = {
@@ -78,7 +76,6 @@ class Logger:
                 **pd.DataFrame(self._log).to_dict("list"),
             }
             json.dump(data, f)
-        print(f"Write log: {time.process_time() - start:.4f}s")
 
     def write_checkpoint(self, ckpt):
         file = os.path.join(self.folder, f"{self.name}.ckpt")
@@ -129,6 +126,7 @@ def main(args, config):
         "config": config,
     }
     logger = Logger(args.log_dir, log_name, metadata, args.use_wandb)
+    logger.write_log()
     if args.use_wandb:
         wandb.init(
             project=args.wandb_project,
@@ -161,10 +159,12 @@ def main(args, config):
             "time/compile": time_compile,
         }
     )
+    logger.write_log()
 
     # Train
     logger.reset_timer()
     train_state, _ = vmap_train(train_config, keys)
+    logger.write_log()
     if args.save_all_checkpoints:
         logger.write_checkpoint(train_state)
     else:
