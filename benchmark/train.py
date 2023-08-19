@@ -165,7 +165,11 @@ def main(args, config):
     # Train
     logger.reset_timer()
     train_state, _ = vmap_train(train_config, keys)
-    logger.write_checkpoint(train_state)
+    if args.save_all_checkpoints:
+        logger.write_checkpoint(train_state)
+    else:
+        train_state = jax.tree_map(lambda x: x[0], train_state)
+        logger.write_checkpoint(train_state)
 
 
 if __name__ == "__main__":
@@ -189,6 +193,11 @@ if __name__ == "__main__":
         type=int,
         default=1,
         help="Number of seeds to use.",
+    )
+    parser.add_argument(
+        "--save-all-checkpoints",
+        action="store_true",
+        help="Save checkpoints of all seeds.",
     )
     parser.add_argument(
         "--global-seed",
@@ -219,7 +228,6 @@ if __name__ == "__main__":
         default="purerl",
         help="Wandb entity name.",
     )
-
     args = parser.parse_args()
     with open(args.config, "r") as f:
         config = load(f, Loader=Loader)
