@@ -117,7 +117,8 @@ def make_evaluate(logger, env, env_params, num_seeds=50):
 
 def main(args, config):
     # Initialize logging
-    log_name = f"{config['env']}_{args.algorithm}_{args.num_seeds}_{args.global_seed}"
+    escaped_env = config["env"].replace("/", "_")
+    log_name = f"{escaped_env}_{args.algorithm}_{args.num_seeds}_{args.global_seed}"
     metadata = {
         "environment": config["env"],
         "algorithm": args.algorithm,
