@@ -90,6 +90,12 @@ class SACConfig(struct.PyTreeNode):
         # Convert activation from str to Callable
         activation = agent_kwargs.pop("activation", "relu")
         agent_kwargs["activation"] = getattr(nn, activation)
+
+        # Convert hidden layer sizes to tuple
+        hidden_layer_sizes = agent_kwargs.pop("hidden_layer_sizes", None)
+        if hidden_layer_sizes is not None:
+            agent_kwargs["hidden_layer_sizes"] = tuple(hidden_layer_sizes)
+
         agent = agent_cls(action_dim, **agent_kwargs)
 
         evaluate = make_evaluate(env, env_params, 200)
@@ -105,13 +111,17 @@ class SACConfig(struct.PyTreeNode):
 class SquashedGaussianActor(nn.Module):
     action_dim: int
     action_range: Tuple[float, float]
-    activation: Callable = nn.relu
+    hidden_layer_sizes: Tuple[int]
+    activation: Callable
     log_std_range: Tuple[float, float] = (-20, 2)
 
     def setup(self):
-        self.features = nn.Sequential(
-            [nn.Dense(64), self.activation, nn.Dense(64), self.activation]
-        )
+        features = []
+        for size in self.hidden_layer_sizes:
+            features.append(nn.Dense(size))
+            features.append(self.activation)
+        self.features = nn.Sequential(features)
+
         self.action_mean = nn.Dense(self.action_dim)
         self.action_log_std = nn.Dense(self.action_dim)
         self.bij = distrax.Tanh()
@@ -150,7 +160,8 @@ class SquashedGaussianActor(nn.Module):
 
 
 class MLPQFunction(nn.Module):
-    activation: Callable = nn.relu
+    hidden_layer_sizes: Tuple[int]
+    activation: Callable
 
     @nn.compact
     def __call__(self, obs, action):
@@ -164,8 +175,9 @@ class MLPQFunction(nn.Module):
 class SACAgentContinuous(nn.Module):
     action_dim: int
     action_range: Tuple[float, float]
-    activation: Callable = nn.tanh
+    activation: Callable = nn.relu
     log_std_range: Tuple[float, float] = (-20, 2)
+    hidden_layer_sizes: Tuple[int] = (64, 64)
 
     def setup(self):
         self.actor = SquashedGaussianActor(
@@ -173,9 +185,10 @@ class SACAgentContinuous(nn.Module):
             self.action_range,
             self.activation,
             self.log_std_range,
+            self.hidden_layer_sizes,
         )
-        self.q1 = MLPQFunction()
-        self.q2 = MLPQFunction()
+        self.q1 = MLPQFunction(self.hidden_layer_sizes, self.activation)
+        self.q2 = MLPQFunction(self.hidden_layer_sizes, self.activation)
         self.log_alpha = self.param("log_alpha", constant(0.0), ())
 
     def __call__(self, obs, rng):
@@ -202,12 +215,16 @@ class SACAgentContinuous(nn.Module):
 
 class DiscreteActor(nn.Module):
     action_dim: int
-    activation: Callable = nn.relu
+    hidden_layer_sizes: Tuple[int]
+    activation: Callable
 
     def setup(self):
-        self.features = nn.Sequential(
-            [nn.Dense(64), self.activation, nn.Dense(64), self.activation]
-        )
+        features = []
+        for size in self.hidden_layer_sizes:
+            features.append(nn.Dense(size))
+            features.append(self.activation)
+        self.features = nn.Sequential(features)
+
         self.action_logits = nn.Dense(self.action_dim)
 
     def __call__(self, x, rng):
@@ -226,18 +243,22 @@ class DiscreteActor(nn.Module):
 
 class DuelingQNetwork(nn.Module):
     action_dim: int
-    activation: Callable = nn.tanh
+    hidden_layer_sizes: Tuple[int]
+    activation: Callable
 
     def setup(self):
-        self.encoder = [nn.Dense(64), nn.Dense(64)]
+        encoder = []
+        for size in self.hidden_layer_sizes:
+            encoder.append(nn.Dense(size))
+            encoder.append(self.activation)
+        self.encoder = nn.Sequential(encoder)
+
         self.value_ = nn.Dense(1)
         self.advantage_ = nn.Dense(self.action_dim)
 
     def encode(self, x):
         x = x.reshape((x.shape[0], -1))
-        for layer in self.encoder:
-            x = self.activation(layer(x))
-        return x
+        return self.encoder(x)
 
     def value(self, x_encoded):
         return self.value_(x_encoded)
@@ -260,14 +281,21 @@ class DuelingQNetwork(nn.Module):
 
 class SACAgentDiscrete(nn.Module):
     action_dim: int
+    hidden_layer_sizes: Tuple[int] = (64, 64)
     activation: Callable = nn.relu
 
     def setup(self):
-        self.actor = DiscreteActor(self.action_dim, self.activation)
+        self.actor = DiscreteActor(
+            self.action_dim, self.hidden_layer_sizes, self.activation
+        )
 
         # TODO: give type of Q network as argument
-        self.q1 = DuelingQNetwork(self.action_dim, self.activation)
-        self.q2 = DuelingQNetwork(self.action_dim, self.activation)
+        self.q1 = DuelingQNetwork(
+            self.action_dim, self.hidden_layer_sizes, self.activation
+        )
+        self.q2 = DuelingQNetwork(
+            self.action_dim, self.hidden_layer_sizes, self.activation
+        )
         self.log_alpha = self.param("log_alpha", constant(0.0), ())
 
     def __call__(self, obs, rng):

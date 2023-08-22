@@ -1,0 +1,40 @@
+# TODO: brax ppo hyperparams has 5 * (256, ) layer sizes for value, 4 * (32, ) for
+# policy. And swish activation. Wtf?
+ppo:
+  env: brax/ant
+  env_kwargs: null
+  env_kwargs:
+    activation: relu
+    hidden_layer_sizes: [256, 256]
+  num_envs: 2048
+  num_steps: 
+  num_epochs: 8
+  num_minibatches: 8
+  learning_rate: 0.0003
+  max_grad_norm: 10
+  total_timesteps: 10_000_000
+  eval_freq: 100_000
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_eps: 0.3
+  ent_coef: 0.0001
+  vf_coef: 0.5
+
+
+sac:
+  env: brax/ant
+  env_kwargs: null
+  agent_kwargs:
+    activation: relu
+    hidden_layer_sizes: [256, 256]
+  num_envs: 256
+  buffer_size: 1_048_576
+  fill_buffer: 8192
+  batch_size: 512
+  learning_rate: 0.0006
+  gradient_steps: 1
+  total_timesteps: 5_242_880
+  eval_freq: 40960
+  gamma: 0.95
+  tau: 0.995
+  target_entropy_ratio: 0

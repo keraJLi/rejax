@@ -1,9 +1,8 @@
 import chex
 import distrax
-from flax import struct
-from flax import linen as nn
 from jax import numpy as jnp
-from typing import Any, Callable
+from flax import struct, linen as nn
+from typing import Any, Callable, Tuple
 from flax.linen.initializers import constant
 from gymnax.environments.environment import Environment
 
@@ -68,6 +67,11 @@ class PPOConfig(struct.PyTreeNode):
         activation = agent_kwargs.pop("activation", "relu")
         agent_kwargs["activation"] = getattr(nn, activation)
 
+        # Convert hidden layer sizes to tuple
+        hidden_layer_sizes = agent_kwargs.pop("hidden_layer_sizes", None)
+        if hidden_layer_sizes is not None:
+            agent_kwargs["hidden_layer_sizes"] = tuple(hidden_layer_sizes)
+
         agent = PPOAgent(action_dim, **agent_kwargs)
         evaluate = make_evaluate(env, env_params, 200)
 
@@ -83,11 +87,15 @@ class PPOConfig(struct.PyTreeNode):
 class PPOAgent(nn.Module):
     action_dim: int
     discrete: bool
+    hidden_layer_sizes: Tuple[int] = (64, 64)
     activation: Callable = nn.tanh
 
     def setup(self):
-        self.value_ = [nn.Dense(64), nn.Dense(64), nn.Dense(1)]
-        self.action_ = [nn.Dense(64), nn.Dense(64), nn.Dense(self.action_dim)]
+        self.value_ = [nn.Dense(s) for s in self.hidden_layer_sizes]
+        self.value_.append(nn.Dense(1))
+        self.action_ = [nn.Dense(s) for s in self.hidden_layer_sizes]
+        self.action_.append(nn.Dense(self.action_dim))
+
         self.action_log_std = self.param(
             "action_log_std", constant(0.0), (self.action_dim,)
         )
