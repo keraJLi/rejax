@@ -32,7 +32,7 @@ class PPOConfig(struct.PyTreeNode):
 
     @property
     def minibatch_size(self):
-        assert self.num_steps % self.num_minibatches == 0
+        assert (self.num_envs * self.num_steps) % self.num_minibatches == 0
         return (self.num_envs * self.num_steps) // self.num_minibatches
 
     @classmethod
