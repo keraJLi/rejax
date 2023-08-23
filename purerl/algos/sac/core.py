@@ -175,17 +175,17 @@ class MLPQFunction(nn.Module):
 class SACAgentContinuous(nn.Module):
     action_dim: int
     action_range: Tuple[float, float]
+    hidden_layer_sizes: Tuple[int] = (64, 64)
     activation: Callable = nn.relu
     log_std_range: Tuple[float, float] = (-20, 2)
-    hidden_layer_sizes: Tuple[int] = (64, 64)
 
     def setup(self):
         self.actor = SquashedGaussianActor(
             self.action_dim,
             self.action_range,
+            self.hidden_layer_sizes,
             self.activation,
             self.log_std_range,
-            self.hidden_layer_sizes,
         )
         self.q1 = MLPQFunction(self.hidden_layer_sizes, self.activation)
         self.q2 = MLPQFunction(self.hidden_layer_sizes, self.activation)
