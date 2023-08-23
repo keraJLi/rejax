@@ -91,10 +91,13 @@ class PPOAgent(nn.Module):
     activation: Callable = nn.tanh
 
     def setup(self):
-        self.value_ = [nn.Dense(s) for s in self.hidden_layer_sizes]
-        self.value_.append(nn.Dense(1))
-        self.action_ = [nn.Dense(s) for s in self.hidden_layer_sizes]
-        self.action_.append(nn.Dense(self.action_dim))
+        value_ = [nn.Dense(s) for s in self.hidden_layer_sizes]
+        value_.append(nn.Dense(1))
+        self.value_ = value_
+
+        action_ = [nn.Dense(s) for s in self.hidden_layer_sizes]
+        action_.append(nn.Dense(self.action_dim))
+        self.action_ = action_
 
         self.action_log_std = self.param(
             "action_log_std", constant(0.0), (self.action_dim,)
