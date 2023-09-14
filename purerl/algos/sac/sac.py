@@ -6,6 +6,7 @@ from typing import Any
 import jax.numpy as jnp
 from flax.core.frozen_dict import FrozenDict
 from flax.training.train_state import TrainState
+from purerl.normalize import RMSState, update_rms, normalize_obs
 
 from purerl.algos.buffers import ReplayBuffer, Minibatch
 
@@ -17,6 +18,7 @@ class SACTrainState(TrainState):
     env_state: Any
     last_obs: chex.Array
     global_step: int
+    rms_state: RMSState
     rng: chex.PRNGKey
 
     def get_rng(self):
@@ -80,6 +82,10 @@ def initialize_train_state(config, rng):
         action_space=config.env.action_space(config.env_params),
     )
 
+    rms_state = RMSState.create(obs_shape)
+    if config.normalize_observations:
+        rms_state = update_rms(rms_state, obs)
+
     train_state = SACTrainState.create(
         apply_fn=config.agent.apply,
         params=params,
@@ -89,6 +95,7 @@ def initialize_train_state(config, rng):
         tx=tx,
         last_obs=obs,
         global_step=0,
+        rms_state=rms_state,
         rng=rng,
     )
 
@@ -98,14 +105,17 @@ def initialize_train_state(config, rng):
 def train_iteration(config, ts):
     # Collect transitions
     ts, transitions = collect_transitions(config, ts)
-    # print(transitions)
-    # jax.debug.print("{}", transitions)
     ts = ts.replace(replay_buffer=ts.replay_buffer.extend(transitions))
 
     # Perform updates to citics, actor and alpha
     def update_iteration(ts):
         ts, rng_sample = ts.get_rng()
         minibatch = ts.replay_buffer.sample(config.batch_size, rng_sample)
+        if config.normalize_observations:
+            minibatch = minibatch._replace(
+                obs=normalize_obs(ts.rms_state, minibatch.obs),
+                next_obs=normalize_obs(ts.rms_state, minibatch.next_obs),
+            )
         ts = update(config, ts, minibatch)
         return ts
 
@@ -135,7 +145,13 @@ def train_iteration(config, ts):
 def collect_transitions(config, ts):
     # Sample actions
     ts, rng_action = ts.get_rng()
-    actions = ts.apply_fn(ts.params, ts.last_obs, rng_action, method="act")
+
+    if config.normalize_observations:
+        last_obs = normalize_obs(ts.rms_state, ts.last_obs)
+    else:
+        last_obs = ts.last_obs
+
+    actions = ts.apply_fn(ts.params, last_obs, rng_action, method="act")
 
     # Step environment
     ts, rng_steps = ts.get_rng()
@@ -144,6 +160,9 @@ def collect_transitions(config, ts):
     next_obs, env_state, rewards, dones, infos = vmap_step(
         rng_steps, ts.env_state, actions, config.env_params
     )
+
+    if config.normalize_observations:
+        ts = ts.replace(rms_state=update_rms(ts.rms_state, next_obs))
 
     # Create minibatch and update train state
     minibatch = Minibatch(

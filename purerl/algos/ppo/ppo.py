@@ -5,6 +5,7 @@ import numpy as np
 import jax.numpy as jnp
 from typing import NamedTuple, Any
 from flax.training.train_state import TrainState
+from purerl.normalize import RMSState, update_and_normalize
 
 # TODO: fix step ratios and so on by implementing an eval tracker
 
@@ -29,6 +30,7 @@ class PPOTrainState(TrainState):
     last_obs: chex.Array
     last_done: chex.Array
     global_step: chex.Array
+    rms_state: RMSState
     rng: chex.PRNGKey
 
     def get_rng(self):
@@ -53,6 +55,10 @@ def initialize_train_state(config, rng):
     vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
     obs, env_state = vmap_reset(env_rng, config.env_params)
 
+    rms_state = RMSState.create(obs.shape[1:])
+    if config.normalize_observations:
+        rms_state, obs = update_and_normalize(rms_state, obs)
+
     train_state = PPOTrainState.create(
         apply_fn=config.agent.apply,
         params=agent_params,
@@ -61,6 +67,7 @@ def initialize_train_state(config, rng):
         last_obs=obs,
         last_done=jnp.zeros(config.num_envs, dtype=bool),
         global_step=0,
+        rms_state=rms_state,
         rng=rng,
     )
     return train_state
@@ -148,6 +155,10 @@ def collect_trajectories(config, ts):
         vmap_step = jax.vmap(config.env.step, in_axes=(0, 0, 0, None))
         transition = vmap_step(rng_steps, ts.env_state, action, config.env_params)
         next_obs, env_state, reward, done, _ = transition
+
+        if config.normalize_observations:
+            rms_state, next_obs = update_and_normalize(ts.rms_state, next_obs)
+            ts = ts.replace(rms_state=rms_state)
 
         # Return updated runner state and transition
         transition = Trajectory(ts.last_obs, action, log_prob, reward, value, done)

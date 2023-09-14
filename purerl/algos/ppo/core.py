@@ -28,6 +28,7 @@ class PPOConfig(struct.PyTreeNode):
     num_epochs: int = struct.field(pytree_node=False)
     num_minibatches: int = struct.field(pytree_node=False)
     max_grad_norm: chex.Scalar = struct.field(pytree_node=False)
+    normalize_observations: bool = struct.field(pytree_node=False, default=False)
     skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
 
     @property

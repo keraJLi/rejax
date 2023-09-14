@@ -8,6 +8,7 @@ from flax.core.frozen_dict import FrozenDict
 from flax.training.train_state import TrainState
 
 from purerl.algos.buffers import Minibatch, ReplayBuffer
+from purerl.normalize import RMSState, update_rms, normalize_obs
 
 
 class DQNTrainState(TrainState):
@@ -16,6 +17,7 @@ class DQNTrainState(TrainState):
     env_state: Any
     last_obs: chex.Array
     global_step: int
+    rms_state: RMSState
     rng: chex.PRNGKey
 
     def get_rng(self):
@@ -46,6 +48,10 @@ def initialize_train_state(config, rng):
         action_space=config.env.action_space(config.env_params),
     )
 
+    rms_state = RMSState.create(obs.shape[1:])
+    if config.normalize_observations:
+        rms_state = update_rms(rms_state, obs)
+
     train_state = DQNTrainState.create(
         apply_fn=config.agent.apply,
         params=q_params,
@@ -55,6 +61,7 @@ def initialize_train_state(config, rng):
         replay_buffer=replay_buffer,
         last_obs=obs,
         global_step=0,
+        rms_state=rms_state,
         rng=rng,
     )
 
@@ -114,6 +121,11 @@ def train_iteration(config, ts):
         # Sample minibatch
         ts, rng_sample = ts.get_rng()
         minibatch = ts.replay_buffer.sample(config.batch_size, rng_sample)
+        if config.normalize_observations:
+            minibatch = minibatch._replace(
+                obs=normalize_obs(ts.rms_state, minibatch.obs),
+                next_obs=normalize_obs(ts.rms_state, minibatch.next_obs),
+            )
 
         # Update network
         ts = update(config, ts, minibatch)
@@ -150,7 +162,12 @@ def collect_transitions(config, ts, epsilon, uniform=False):
         return jax.vmap(sample_fn)(jax.random.split(rng, config.num_envs))
 
     def sample_policy(rng):
-        return ts.apply_fn(ts.params, ts.last_obs, rng, epsilon=epsilon, method="act")
+        if config.normalize_observations:
+            last_obs = normalize_obs(ts.rms_state, ts.last_obs)
+        else:
+            last_obs = ts.last_obs
+
+        return ts.apply_fn(ts.params, last_obs, rng, epsilon=epsilon, method="act")
 
     actions = jax.lax.cond(uniform, sample_uniform, sample_policy, rng_action)
 
@@ -160,6 +177,9 @@ def collect_transitions(config, ts, epsilon, uniform=False):
     next_obs, env_state, rewards, dones, _ = vmap_step(
         rng_steps, ts.env_state, actions, config.env_params
     )
+    if config.normalize_observations:
+        ts = ts.replace(rms_state=update_rms(ts.rms_state, next_obs))
+
     minibatch = Minibatch(
         obs=ts.last_obs,
         action=actions,

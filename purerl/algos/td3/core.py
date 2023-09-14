@@ -28,6 +28,7 @@ class TD3Config(struct.PyTreeNode):
     buffer_size: int = struct.field(pytree_node=False)
     fill_buffer: int = struct.field(pytree_node=False)
     batch_size: int = struct.field(pytree_node=False)
+    normalize_observations: bool = struct.field(pytree_node=False, default=False)
     skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
 
     @property

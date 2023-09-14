@@ -8,6 +8,7 @@ from flax.core.frozen_dict import FrozenDict
 from flax.training.train_state import TrainState
 
 from purerl.algos.buffers import Minibatch, ReplayBuffer
+from purerl.normalize import RMSState, update_rms, normalize_obs
 
 
 class DDPGTrainState(TrainState):
@@ -16,6 +17,7 @@ class DDPGTrainState(TrainState):
     env_state: Any
     last_obs: chex.Array
     global_step: int
+    rms_state: RMSState
     rng: chex.PRNGKey
 
     def get_rng(self):
@@ -46,6 +48,10 @@ def initialize_train_state(config, rng):
         action_space=config.env.action_space(config.env_params),
     )
 
+    rms_state = RMSState.create(obs.shape[1:])
+    if config.normalize_observations:
+        rms_state = update_rms(rms_state, obs)
+
     train_state = DDPGTrainState.create(
         apply_fn=config.agent.apply,
         params=q_params,
@@ -55,6 +61,7 @@ def initialize_train_state(config, rng):
         replay_buffer=replay_buffer,
         last_obs=obs,
         global_step=0,
+        rms_state=rms_state,
         rng=rng,
     )
 
@@ -109,6 +116,11 @@ def train_iteration(config, ts):
         # Sample minibatch
         ts, rng_sample = ts.get_rng()
         minibatch = ts.replay_buffer.sample(config.batch_size, rng_sample)
+        if config.normalize_observations:
+            minibatch = minibatch._replace(
+                obs=normalize_obs(ts.rms_state, minibatch.obs),
+                next_obs=normalize_obs(ts.rms_state, minibatch.next_obs),
+            )
 
         # Update network
         ts = update(config, ts, minibatch)
@@ -141,8 +153,13 @@ def collect_transitions(config, ts, uniform=False):
         return jax.vmap(sample_fn)(jax.random.split(rng, config.num_envs))
 
     def sample_policy(rng):
+        if config.normalize_observations:
+            last_obs = normalize_obs(ts.rms_state, ts.last_obs)
+        else:
+            last_obs = ts.last_obs
+
         rng_action, rng_noise = jax.random.split(rng)
-        actions = ts.apply_fn(ts.params, ts.last_obs, rng_action, method="act")
+        actions = ts.apply_fn(ts.params, last_obs, rng_action, method="act")
         noise = config.exploration_noise * jax.random.normal(rng_noise, actions.shape)
         return jnp.clip(actions + noise, config.action_low, config.action_high)
 
@@ -155,6 +172,9 @@ def collect_transitions(config, ts, uniform=False):
     next_obs, env_state, rewards, dones, _ = vmap_step(
         rng_steps, ts.env_state, actions, config.env_params
     )
+
+    if config.normalize_observations:
+        ts = ts.replace(rms_state=update_rms(ts.rms_state, next_obs))
 
     # Return minibatch and updated train state
     minibatch = Minibatch(
