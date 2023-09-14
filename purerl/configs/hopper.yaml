@@ -3,14 +3,14 @@
 
 # 10 million timesteps
 ppo:
-  env: brax/ant
+  env: brax/hopper
   env_kwargs: null
   agent_kwargs:
     activation: tanh
     # hidden_layer_sizes: [256, 256]
   num_envs: 2000
   num_steps: 5
-  num_epochs: 8
+  num_epochs: 16
   num_minibatches: 8
   learning_rate: 0.0003
   max_grad_norm: 10
@@ -26,7 +26,7 @@ ppo:
 
 # 500 million timesteps
 # ppo:
-#   env: brax/ant
+#   env: brax/hopper
 #   env_kwargs: null
 #   agent_kwargs:
 #     activation: tanh
@@ -48,11 +48,11 @@ ppo:
 
 
 sac:
-  env: brax/ant
+  env: brax/hopper
   env_kwargs: null
   agent_kwargs:
     activation: tanh
-  #   hidden_layer_sizes: [256, 256]
+    # hidden_layer_sizes: [256, 256]
   num_envs: 256
   buffer_size: 1_048_576
   fill_buffer: 8192

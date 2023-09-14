@@ -10,11 +10,12 @@ SLURM_SCRIPT = """\
 #!/bin/bash
 #SBATCH --job-name={run_name}
 #SBATCH --cpus-per-task=4
-#SBATCH --mem-per-cpu=1G
+#SBATCH --mem-per-cpu=4G
 #SBATCH --output={results_dir}/{run_name}_%j.out
 #SBATCH --partition=gpu,scioi_gpu,ex_scioi_gpu,ex_scioi_a100nv
+#SBATCH --constraint=tesla_a10080G
 #SBATCH --gres=gpu:a100:1
-#SBATCH --time=1:00:00
+#SBATCH --time=3-0:00:00
 
 eval "$(conda shell.bash hook)"
 conda activate jax
@@ -59,7 +60,7 @@ def main(args):
         config = load(f, Loader=Loader)
 
     algorithms = config.keys()
-    num_seeds = [1, 5, 10, 50, 100, 500, 1000, 5000, 10000]
+    num_seeds = [10]
     for algorithm, num_seeds in list(product(algorithms, num_seeds)):
         run(args.results_dir, args.config, algorithm, num_seeds, args.wandb_key)
 

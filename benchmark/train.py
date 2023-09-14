@@ -14,7 +14,7 @@ from purerl.evaluate import make_evaluate as make_evaluate_vanilla
 class Logger:
     def __init__(self, folder, name, metadata, use_wandb):
         self.folder = folder
-        self.name = name
+        self.name = f"{name}_{time.time()}"
         self.metadata = metadata
         self.last_step = 0
         self._log = []
@@ -34,36 +34,43 @@ class Logger:
             for k, v in data.items():
                 wandb.run.summary[k] = v
 
-    def log(self, data, step):
-        step = step.item()  # jax cpu callback returns numpy array
-
+    def collect_log_step(self):
         def convert(x):
             if isinstance(x, (np.ndarray, jnp.ndarray)):
                 return x.tolist()
             return x
 
+        process_time = time.process_time() - self.timer
+
+        # Compute mean over initial seeds for wandb, log all stuff for json
+        _log_step = jax.tree_map(convert, self._log_step)
+        _log_step = pd.DataFrame(_log_step)
+
+        self._log.append(
+            {
+                "time/process_time": process_time,
+                "step": self.last_step,
+                **_log_step.to_dict("list"),
+            }
+        )
+        self._log_step = []
+
+        if self.use_wandb:
+            wandb.log(
+                {
+                    "time/process_time": process_time,
+                    **_log_step.mean(axis=0).to_dict(),
+                },
+                step=self.last_step,
+            )
+
+    def log(self, data, step):
+        step = step.item()  # jax cpu callback returns numpy array
+
         # Because of vmapping the training function, self.log is called several times
         # sequentially. Therefore we only log once we reach a new global_step
         if step > self.last_step:
-            process_time = time.process_time() - self.timer
-
-            # Compute mean over initial seeds for wandb, log all stuff for json
-            _log_step = jax.tree_map(convert, self._log_step)
-            _log_step = pd.DataFrame(_log_step)
-
-            self._log.append(
-                {"time/process_time": process_time, **_log_step.to_dict("list")}
-            )
-            self._log_step = []
-
-            if self.use_wandb:
-                wandb.log(
-                    {
-                        "time/process_time": process_time,
-                        **_log_step.mean(axis=0).to_dict(),
-                    },
-                    step=step,
-                )
+            self.collect_log_step()
 
         self._log_step.append(data)
         self.last_step = step
@@ -165,6 +172,7 @@ def main(args, config):
     # Train
     logger.reset_timer()
     train_state, _ = vmap_train(train_config, keys)
+    logger.collect_log_step()
     logger.write_log()
     if args.save_all_checkpoints:
         logger.write_checkpoint(train_state)

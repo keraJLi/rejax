@@ -5,6 +5,8 @@ from functools import partial
 from gymnax.environments import environment
 from typing import Any, NamedTuple, Callable, Tuple
 
+from purerl.normalize import normalize_obs
+
 
 class EvalState(NamedTuple):
     rng: chex.PRNGKey
@@ -86,6 +88,9 @@ def make_evaluate(env, env_params, num_seeds, max_steps_in_episode=None):
 
     def _evaluate(config, ts, rng):
         def act(obs, rng):
+            if getattr(config, "normalize_observations", False):
+                obs = normalize_obs(ts.rms_state, obs)
+
             obs = jnp.expand_dims(obs, 0)
             action = config.agent.apply(ts.params, obs, rng, method="act")
             return jnp.squeeze(action, 0)
