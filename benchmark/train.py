@@ -17,6 +17,7 @@ class Logger:
         self.name = f"{name}_{time.time()}"
         self.metadata = metadata
         self.last_step = 0
+        self.last_time = 0
         self._log = []
         self._log_step = []
         self.timer = None
@@ -40,15 +41,13 @@ class Logger:
                 return x.tolist()
             return x
 
-        process_time = time.process_time() - self.timer
-
         # Compute mean over initial seeds for wandb, log all stuff for json
         _log_step = jax.tree_map(convert, self._log_step)
         _log_step = pd.DataFrame(_log_step)
 
         self._log.append(
             {
-                "time/process_time": process_time,
+                "time/process_time": self.last_time - self.timer,
                 "step": self.last_step,
                 **_log_step.to_dict("list"),
             }
@@ -58,7 +57,7 @@ class Logger:
         if self.use_wandb:
             wandb.log(
                 {
-                    "time/process_time": process_time,
+                    "time/process_time": self.last_time - self.timer,
                     **_log_step.mean(axis=0).to_dict(),
                 },
                 step=self.last_step,
@@ -74,6 +73,7 @@ class Logger:
 
         self._log_step.append(data)
         self.last_step = step
+        self.last_time = time.process_time()
 
     def write_log(self):
         file = os.path.join(self.folder, f"{self.name}.json")
@@ -94,9 +94,10 @@ class Logger:
 
     def reset_timer(self):
         self.timer = time.process_time()
+        self.last_time = self.timer
 
 
-def make_evaluate(logger, env, env_params, num_seeds=50):
+def make_evaluate(logger, env, env_params, num_seeds=20):
     evaluate_vanilla = make_evaluate_vanilla(env, env_params, num_seeds)
 
     def log_with_garbage_return(data, step):
@@ -112,8 +113,12 @@ def make_evaluate(logger, env, env_params, num_seeds=50):
             {
                 "episode_length": lengths.mean(axis=0),
                 "episode_length_std": lengths.std(axis=0),
+                "episode_length_max": lengths.max(axis=0),
+                "episode_length_min": lengths.min(axis=0),
                 "return": returns.mean(axis=0),
                 "return_std": returns.std(axis=0),
+                "return_max": returns.max(axis=0),
+                "return_min": returns.min(axis=0),
             },
             ts.global_step,
         )

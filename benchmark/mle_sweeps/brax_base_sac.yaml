@@ -1,0 +1,45 @@
+log_config:
+  time_to_track: ["step"]
+  what_to_track:
+    - return
+    - episode_length
+  what_to_print:
+    - return
+    - return_std
+  verbose: true
+  print_every_k_updates: 1
+  overwrite: 1
+  model_type: "jax"
+  use_wandb: true
+  wandb_config:
+    project: purerl-test
+    group: sweep-reacher-sac-128-envs
+    entity: kerajli
+    name: seed0
+
+device_config:
+  device_type: "gpu"
+  num_devices: 1
+
+train_config:
+  algo: sac
+  num_seeds: 5
+
+  env: brax/reacher
+  env_kwargs:
+    episode_length: 50
+  agent_kwargs:
+    activation: tanh
+    # hidden_layer_sizes: [256, 256]
+  num_envs: 128
+  buffer_size: 1_000_000
+  fill_buffer: 10_000
+  batch_size: 512
+  learning_rate: 0.0005
+  gradient_steps: 128
+  total_timesteps: 5_000_000
+  eval_freq: 50_000
+  gamma: 0.99
+  tau: 0.995
+  target_entropy_ratio: 0
+  normalize_observations: true

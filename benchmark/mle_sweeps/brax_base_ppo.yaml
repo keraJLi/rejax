@@ -1,0 +1,44 @@
+log_config:
+  time_to_track: ["step"]
+  what_to_track:
+    - return
+    - episode_length
+  what_to_print:
+    - return
+    - return_std
+  verbose: true
+  print_every_k_updates: 1
+  overwrite: 1
+  model_type: "jax"
+  use_wandb: true
+  wandb_config:
+    project: purerl-test
+    group: sweep-swimmer-ppo
+    entity: kerajli
+    name: seed0
+
+device_config:
+  device_type: "gpu"
+  num_devices: 1
+
+train_config:
+  algo: ppo
+  num_seeds: 5
+
+  env: brax/swimmer
+  agent_kwargs:
+    activation: tanh
+  num_envs: 256
+  num_steps: 16
+  num_epochs: 4
+  num_minibatches: 16
+  learning_rate: 0.0003
+  max_grad_norm: 10
+  total_timesteps: 5242880
+  eval_freq: 262144
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  normalize_observations: true

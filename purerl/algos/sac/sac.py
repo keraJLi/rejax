@@ -115,6 +115,7 @@ def train_iteration(config, ts):
             minibatch = minibatch._replace(
                 obs=normalize_obs(ts.rms_state, minibatch.obs),
                 next_obs=normalize_obs(ts.rms_state, minibatch.next_obs),
+                reward=config.reward_scaling * minibatch.reward,
             )
         ts = update(config, ts, minibatch)
         return ts

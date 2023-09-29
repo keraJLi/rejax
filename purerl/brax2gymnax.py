@@ -35,6 +35,7 @@ class Brax2GymnaxEnv(GymnaxEnv):
     def is_terminal(self, state):
         return state.done.astype(bool)
 
+    @property
     def name(self):
         return self.env.unwrapped.__class__.__name__
 

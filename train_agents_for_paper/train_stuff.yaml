@@ -1,0 +1,25 @@
+log_config:
+  time_to_track: ["step"]
+  what_to_track:
+    - return
+  what_to_print:
+    - return
+  verbose: true
+  print_every_k_updates: 1
+  overwrite: 1
+  model_type: "jax"
+  use_wandb: false
+  wandb_config:
+    project: purerl-test
+    group: delete-me
+    entity: kerajli
+    name: seed0
+
+device_config:
+  device_type: "gpu"
+  num_devices: 1
+
+train_config:
+  algo: ddpg
+  env: hopper
+  num_seeds: 5

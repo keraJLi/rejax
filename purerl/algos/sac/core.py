@@ -34,6 +34,9 @@ class SACConfig(struct.PyTreeNode):
     normalize_observations: bool = struct.field(pytree_node=False, default=False)
     skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
 
+    # Non-static default
+    reward_scaling: chex.Scalar = struct.field(pytree_node=True, default=1.0)
+
     @property
     def discrete(self):
         action_space = self.env.action_space(self.env_params)

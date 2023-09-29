@@ -1,0 +1,55 @@
+# Meta Arguments: What job? What train .py file? Base config? Where to store?
+meta_job_args:
+  project_name: "purerl-test"
+  experiment_type: "hyperparameter-search"
+  base_train_fname: "mle_train.py"
+  base_train_config: "brax_base_sac.yaml"
+  experiment_dir: "../results/sweep_sac_reacher_128_envs"
+
+
+# Parameters specific to the hyperparameter search
+param_search_args:
+  search_logging:
+    max_objective: True
+    aggregate_seeds: "mean"
+    problem_type: "final"
+    eval_metrics:
+      - "return"
+  search_resources:
+    # num_search_batches: 1
+    # num_evals_per_batch: 4
+    num_total_evals: 20
+    max_running_jobs: 4
+    num_seeds_per_eval: 1
+  search_config:
+    search_type: "Random"
+    search_schedule: "async"
+    search_params:
+      categorical:
+        env: "brax/reacher"
+        batch_size: [128, 256, 512]
+        gamma: [0.995, 0.99, 0.95, 0.98]
+        tau: [0.995, 0.99, 0.95, 0.98]
+      real:
+        learning_rate:
+          begin: 0.0001
+          end: 0.005
+          prior: log-uniform
+
+
+
+# Parameters specific to an individual job
+single_job_args:
+  job_name: "purerl_sac_sweep"
+  num_gpus: 1
+  num_logical_cores: 4
+  log_file: "log"
+  err_file: "err"
+  env_name: "jax"
+  time_per_job: "00:04:00"
+  partition:
+    # - "ex_scioi_a100nv"
+    - "ex_scioi_gpu"
+    - "gpu"
+  gpu_type: a100
+  memory_per_cpu: 10000

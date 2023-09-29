@@ -93,7 +93,7 @@ def make_evaluate(env, env_params, num_seeds, max_steps_in_episode=None):
 
             obs = jnp.expand_dims(obs, 0)
             action = config.agent.apply(ts.params, obs, rng, method="act")
-            return jnp.squeeze(action, 0)
+            return jnp.squeeze(action)
 
         return evaluate(act, rng, env, env_params, num_seeds, max_steps_in_episode)
 
