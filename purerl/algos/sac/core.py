@@ -34,6 +34,9 @@ class SACConfig(struct.PyTreeNode):
     normalize_observations: bool = struct.field(pytree_node=False, default=False)
     skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
 
+    # Non-static default
+    reward_scaling: chex.Scalar = struct.field(pytree_node=True, default=1.0)
+
     @property
     def discrete(self):
         action_space = self.env.action_space(self.env_params)
@@ -136,6 +139,7 @@ class SquashedGaussianActor(nn.Module):
         return (self.action_range[1] - self.action_range[0]) / 2
 
     def __call__(self, x, rng):
+        x = x.reshape((x.shape[0], -1))
         features = self.features(x)
         action_mean = self.action_mean(features)
         action_log_std = self.action_log_std(features)
@@ -229,6 +233,7 @@ class DiscreteActor(nn.Module):
         self.action_logits = nn.Dense(self.action_dim)
 
     def __call__(self, x, rng):
+        x = x.reshape((x.shape[0], -1))
         features = self.features(x)
         action_logits = self.action_logits(features)
         action_dist = distrax.Categorical(logits=action_logits)
