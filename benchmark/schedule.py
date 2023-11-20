@@ -12,8 +12,8 @@ SLURM_SCRIPT = """\
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=4G
 #SBATCH --output={results_dir}/{run_name}_%j.out
-#SBATCH --partition=gpu,scioi_gpu,ex_scioi_gpu,ex_scioi_a100nv
-#SBATCH --constraint=tesla_a10080G
+#SBATCH --partition=gpu,scioi_gpu,ex_scioi_gpu
+# #SBATCH --constraint=tesla_a10080G
 #SBATCH --gres=gpu:a100:1
 #SBATCH --time=3-0:00:00
 
@@ -29,6 +29,7 @@ python train.py \
     --config {config} \
     --algorithm {algorithm} \
     --num-seeds {num_seeds} \
+    --global-seed {global_seed} \
     --log-dir {results_dir} \
     --use-wandb \
     --wandb-project purerl-test \
@@ -36,7 +37,7 @@ python train.py \
 """
 
 
-def run(results_dir, config, algorithm, num_seeds, wandb_key):
+def run(results_dir, config, algorithm, num_seeds, global_seed, wandb_key):
     config_fname = os.path.split(config)[-1].replace(".yaml", "")
     run_name = f"purerl_bench_{config_fname}_{algorithm}_{num_seeds}"
     run_file = f"{run_name}.sbatch.tmp"
@@ -48,6 +49,7 @@ def run(results_dir, config, algorithm, num_seeds, wandb_key):
                 config=config,
                 algorithm=algorithm,
                 num_seeds=num_seeds,
+                global_seed=global_seed,
                 wandb_key=wandb_key,
             )
         )
@@ -62,7 +64,14 @@ def main(args):
     algorithms = config.keys()
     num_seeds = [10]
     for algorithm, num_seeds in list(product(algorithms, num_seeds)):
-        run(args.results_dir, args.config, algorithm, num_seeds, args.wandb_key)
+        run(
+            args.results_dir,
+            args.config,
+            algorithm,
+            num_seeds,
+            args.global_seed,
+            args.wandb_key,
+        )
 
 
 parser = argparse.ArgumentParser()
@@ -83,6 +92,12 @@ parser.add_argument(
     type=str,
     default="results",
     help="Directory to store results.",
+)
+parser.add_argument(
+    "--global-seed",
+    type=int,
+    default=0,
+    help="Random seed for reproducibility.",
 )
 
 if __name__ == "__main__":

@@ -31,11 +31,7 @@ class SACConfig(struct.PyTreeNode):
     fill_buffer: int = struct.field(pytree_node=False)
     batch_size: int = struct.field(pytree_node=False)
     gradient_steps: int = struct.field(pytree_node=False)
-    normalize_observations: bool = struct.field(pytree_node=False, default=False)
     skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
-
-    # Non-static default
-    reward_scaling: chex.Scalar = struct.field(pytree_node=True, default=1.0)
 
     @property
     def discrete(self):
