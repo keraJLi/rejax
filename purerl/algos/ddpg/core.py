@@ -47,7 +47,7 @@ class DDPGConfig(struct.PyTreeNode):
         config = deepcopy(config)  # Because we're popping from it
 
         # Get env id and convert to gymnax environment and parameters
-        env_kwargs = config.pop("env_kwargs", None) or {}
+        env_kwargs = config.pop("env_kwargs", {})
         env_id = config.pop("env")
         if env_id.startswith("brax"):
             env = Brax2GymnaxEnv(env_id.split("/")[1], **env_kwargs)
@@ -55,7 +55,7 @@ class DDPGConfig(struct.PyTreeNode):
         else:
             env, env_params = gymnax.make(env_id, **env_kwargs)
 
-        agent_kwargs = config.pop("agent_kwargs", None) or {}
+        agent_kwargs = config.pop("agent_kwargs", {})
         activation = agent_kwargs.pop("activation", "relu")
         agent_kwargs["activation"] = getattr(nn, activation)
 

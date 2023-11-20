@@ -47,7 +47,7 @@ class PPOConfig(struct.PyTreeNode):
         config = deepcopy(config)  # Because we're popping from it
 
         # Get env id and convert to gymnax environment and parameters
-        env_kwargs = config.pop("env_kwargs", None) or {}
+        env_kwargs = config.pop("env_kwargs", {})
         env_id = config.pop("env")
         if env_id.startswith("brax"):
             env = Brax2GymnaxEnv(env_id.split("/")[1], **env_kwargs)
@@ -57,7 +57,7 @@ class PPOConfig(struct.PyTreeNode):
         action_space = env.action_space(env_params)
         discrete = isinstance(action_space, gymnax.environments.spaces.Discrete)
 
-        agent_kwargs = config.pop("agent_kwargs", None) or {}
+        agent_kwargs = config.pop("agent_kwargs", {})
         agent_kwargs["discrete"] = discrete
 
         if discrete:

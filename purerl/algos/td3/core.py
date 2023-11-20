@@ -54,7 +54,7 @@ class TD3Config(struct.PyTreeNode):
         config = deepcopy(config)  # Because we're popping from it
 
         # Get env id and convert to gymnax environment and parameters
-        env_kwargs = config.pop("env_kwargs", None) or {}
+        env_kwargs = config.pop("env_kwargs", {})
         env_id = config.pop("env")
         if env_id.startswith("brax"):
             env = Brax2GymnaxEnv(env_id.split("/")[1], **env_kwargs)
@@ -62,7 +62,7 @@ class TD3Config(struct.PyTreeNode):
         else:
             env, env_params = gymnax.make(env_id, **env_kwargs)
 
-        actor_kwargs = config.pop("actor_kwargs", None) or {}
+        actor_kwargs = config.pop("actor_kwargs", {})
         activation = actor_kwargs.pop("activation", "relu")
         actor_kwargs["activation"] = getattr(nn, activation)
         action_range = (
@@ -72,7 +72,7 @@ class TD3Config(struct.PyTreeNode):
         action_dim = np.prod(env.action_space(env_params).shape)
         actor = TD3Actor(action_dim, action_range, **actor_kwargs)
 
-        critic_kwargs = config.pop("critic_kwargs") or {}
+        critic_kwargs = config.pop("critic_kwargs", {})
         activation = critic_kwargs.pop("activation", "relu")
         critic_kwargs["activation"] = getattr(nn, activation)
         critic_cls = nn.vmap(
