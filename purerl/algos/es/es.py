@@ -3,13 +3,14 @@ import chex
 import numpy as np
 import jax.numpy as jnp
 from flax.core import FrozenDict
+from flax.struct import PyTreeNode
 from purerl.evaluate import evaluate as evaluate_act
 
 
 def evaluate(config, evo_state, rng):
     # Mocks train state to ensure compatibility with evaluate.make_evaluate
     # TODO: rewrite to avoid this (e.g. use ESTrainState globally)
-    class ESTrainState:
+    class ESTrainState(PyTreeNode):
         params: FrozenDict
         evo_state: chex.ArrayTree
 
