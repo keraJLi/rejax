@@ -1,7 +1,9 @@
-import jax
 from time import time
-from evosax import SNES
 from functools import partial
+
+import jax
+from evosax import SNES
+
 from purerl.algos import get_agent
 
 """
