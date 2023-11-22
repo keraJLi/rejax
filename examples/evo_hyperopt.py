@@ -1,11 +1,3 @@
-from time import time
-from functools import partial
-
-import jax
-from evosax import SNES
-
-from purerl.algos import get_agent
-
 """
 In this example we are fitting hyperparameters of an SAC agent playing pendulum using an
 evolutionary strategy implemented in evosax (https://github.com/RobertTLange/evosax).
@@ -17,6 +9,15 @@ In order to efficiently calculate the fitness of a whole population, we are vmap
 both over all sampled hyperparameter combinations, as well as several random seeds per
 combination to reduce variance in our fitness estimate.
 """
+
+from time import time
+from functools import partial
+
+import jax
+from evosax import SNES
+
+from purerl.algos import get_agent
+
 
 NUM_GENERATIONS = 10
 POPULATION_SIZE = 10

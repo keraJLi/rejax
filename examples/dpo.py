@@ -1,11 +1,12 @@
-import jax
-from jax import numpy as jnp
-
 """
 This example demonstrates how to modify an existing algorithm. To this end, we change
-the loss function of PPO to be the one from "Discovered Policy Optimisation" by Chris Lu
-et al. (https://arxiv.org/abs/2210.05639). 
+the update of PPO to be the one from "Discovered Policy Optimisation" by Chris Lu et al.
+(https://arxiv.org/abs/2210.05639). 
 """
+
+
+import jax
+from jax import numpy as jnp
 
 from purerl.algos import PPO, PPOConfig
 
@@ -33,23 +34,22 @@ class DPO(PPO):
             )
             entropy = entropy.mean()
 
-            # Calculate actor loss
+            # Calculate actor loss as in DPO
             alpha, beta = 2, 0.6
             ratio = jnp.exp(log_prob - batch.trajectories.log_prob)
             advantages = (batch.advantages - batch.advantages.mean()) / (
                 batch.advantages.std() + 1e-8
             )
-            pi_loss1 = jnp.maximum(
-                0,
+            drift1 = jax.nn.relu(
                 (ratio - 1) * advantages
                 - alpha * jnp.tanh((ratio - 1) * advantages / alpha),
             )
-            pi_loss2 = jnp.maximum(
-                0,
+            drift2 = jax.nn.relu(
                 jnp.log(ratio) * advantages
                 - beta * jnp.tanh(jnp.log(ratio) * advantages / beta),
             )
-            pi_loss = jnp.where(advantages >= 0, pi_loss1, pi_loss2).mean()
+            drift = jnp.where(advantages >= 0, drift1, drift2)
+            pi_loss = -(ratio * advantages - drift).mean()
 
             return entropy, pi_loss
 
@@ -63,29 +63,33 @@ class DPO(PPO):
         return ts
 
 
-config = PPOConfig.from_dict({
-    "env": "CartPole-v1",
-    "total_timesteps": 100_000,
-    "eval_freq": 5000,
-    "num_envs": 10,
-    "num_steps": 100,
-    "num_epochs": 10,
-    "num_minibatches": 10,
-    "max_grad_norm": 0.5,
-    "learning_rate": 0.0005,
-    "gamma": 0.99,
-    "gae_lambda": 0.95,
-    "clip_eps": 0.2,
-    "ent_coef": 0.01,
-    "vf_coef": 0.5,
-})
+config = PPOConfig.from_dict(
+    {
+        "env": "CartPole-v1",
+        "total_timesteps": 100_000,
+        "eval_freq": 5000,
+        "num_envs": 10,
+        "num_steps": 100,
+        "num_epochs": 10,
+        "num_minibatches": 10,
+        "max_grad_norm": 0.5,
+        "learning_rate": 0.0005,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "clip_eps": 0.2,
+        "ent_coef": 0.01,
+        "vf_coef": 0.5,
+    }
+)
 
 eval_callback = config.eval_callback
+
 
 def eval_with_print(c, ts, rng):
     lengths, returns = eval_callback(c, ts, rng)
     jax.debug.print("{}", returns.mean())
     return lengths, returns
+
 
 config = config.replace(eval_callback=eval_with_print)
 

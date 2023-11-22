@@ -1,12 +1,13 @@
+"""
+In this example we are fitting hyperparameters of a TD3 agent on Pendulum using random
+search.
+"""
+
 import jax
 from jax import numpy as jnp
 
 from purerl.algos import get_agent
 
-"""
-In this example we are fitting hyperparameters of a TD3 agent on Pendulum using random
-search.
-"""
 
 # How many random configurations should we try?
 POPULATION_SIZE = 10
