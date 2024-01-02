@@ -150,10 +150,17 @@ class PPO(Algorithm):
             rng_steps = jax.random.split(rng_steps, config.num_envs)
 
             # Sample action
-            action, log_prob = ts.apply_fn(
+            unclipped_action, log_prob = ts.apply_fn(
                 ts.params, ts.last_obs, rng_action, method="action_log_prob"
             )
             value = ts.apply_fn(ts.params, ts.last_obs, method="value")
+
+            if config.agent.discrete:
+                action = unclipped_action
+            else:
+                low = config.env.action_space(config.env_params).low
+                high = config.env.action_space(config.env_params).high
+                action = jnp.clip(unclipped_action, low, high)
 
             # Step environment
             vmap_step = jax.vmap(config.env.step, in_axes=(0, 0, 0, None))
@@ -165,7 +172,9 @@ class PPO(Algorithm):
                 ts = ts.replace(rms_state=rms_state)
 
             # Return updated runner state and transition
-            transition = Trajectory(ts.last_obs, action, log_prob, reward, value, done)
+            transition = Trajectory(
+                ts.last_obs, unclipped_action, log_prob, reward, value, done
+            )
             ts = ts.replace(
                 env_state=env_state,
                 last_obs=next_obs,
