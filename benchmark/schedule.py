@@ -12,16 +12,17 @@ SLURM_SCRIPT = """\
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=4G
 #SBATCH --output={results_dir}/{run_name}_%j.out
-#SBATCH --partition=gpu,scioi_gpu,ex_scioi_gpu
-# #SBATCH --constraint=tesla_a10080G
-#SBATCH --gres=gpu:a100:1
+#SBATCH --partition=ex_scioi_gpu
+#SBATCH --constraint=tesla_a10080G
+#SBATCH --gres=gpu:1
+# #SBATCH --gres=gpu:a100:1
 #SBATCH --time=3-0:00:00
 
 eval "$(conda shell.bash hook)"
 conda activate jax
 
-export http_proxy=http://frontend01:3128/
-export https_proxy=http://frontend01:3128/
+# export http_proxy=http://frontend01:3128/
+# export https_proxy=http://frontend01:3128/
 export WANDB__SERVICE_WAIT=300
 export WANDB_API_KEY={wandb_key}
 
@@ -62,7 +63,7 @@ def main(args):
         config = load(f, Loader=Loader)
 
     algorithms = config.keys()
-    num_seeds = [10]
+    num_seeds = [1, 2, 5, 10, 50, 100, 200, 300, 500, 700, 1000]
     for algorithm, num_seeds in list(product(algorithms, num_seeds)):
         run(
             args.results_dir,

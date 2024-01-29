@@ -1,0 +1,81 @@
+sac:
+  env: brax/hopper
+  env_kwargs:
+    backend: positional
+  agent_kwargs:
+    activation: tanh
+  num_envs: 128
+  buffer_size: 1_000_000
+  fill_buffer: 10_000
+  batch_size: 128
+  learning_rate: 0.0005720796166976961
+  gradient_steps: 128
+  total_timesteps: 1_000_000
+  eval_freq: 32768
+  gamma: 0.995
+  tau: 0.95
+  target_entropy_ratio: 0
+  # normalize_observations: true
+
+ppo:
+  env: brax/hopper
+  env_kwargs:
+    backend: positional
+  agent_kwargs:
+    activation: tanh
+  num_envs: 32
+  num_steps: 32
+  num_epochs: 9
+  num_minibatches: 2
+  learning_rate: 0.00025674088686342003
+  max_grad_norm: 1
+  total_timesteps: 1_000_000
+  eval_freq: 32768
+  gamma: 0.995
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  # normalize_observations: true
+
+ddpg:
+  env: brax/hopper
+  env_kwargs:
+    backend: positional
+  agent_kwargs:
+    activation: tanh
+  num_envs: 128
+  buffer_size: 1_000_000
+  fill_buffer: 8192
+  batch_size: 512
+  learning_rate: 0.00014524424253732564
+  gradient_steps: 128
+  total_timesteps: 1_000_000
+  eval_freq: 32768
+  gamma: 0.995
+  tau: 0.98
+  max_grad_norm: 1
+  exploration_noise: 0.2
+
+# td3:
+#   env: brax/hopper
+#   env_kwargs:
+#     backend: positional
+#   actor_kwargs:
+#       activation: tanh
+#   critic_kwargs:
+#       activation: tanh
+#   buffer_size: 1_000_000
+#   fill_buffer: 8192
+#   batch_size: 512
+#   learning_rate: 0.00014524424253732564
+#   gradient_steps: 128
+#   total_timesteps: 1_000_000
+#   eval_freq: 32768
+#   gamma: 0.995
+#   tau: 0.98
+#   max_grad_norm: 1
+#   exploration_noise: 0.2
+#   target_noise: 0.2
+#   target_noise_clip: 0.5
+#   policy_delay: 2

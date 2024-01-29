@@ -1,0 +1,55 @@
+sac:
+  env: Breakout-MinAtar
+  agent_kwargs:
+    activation: tanh
+  num_envs: 5
+  buffer_size: 100_000
+  fill_buffer: 20_000
+  batch_size: 100
+  learning_rate: 0.005
+  gradient_steps: 5
+  total_timesteps: 1_000_000
+  eval_freq: 50_000
+  gamma: 1.0
+  tau: 0.8
+  target_entropy_ratio: 0.5
+
+ppo:
+  env: Breakout-MinAtar
+  agent_kwargs:
+    activation: tanh
+  num_envs: 32
+  num_steps: 32
+  num_epochs: 4
+  num_minibatches: 4
+  learning_rate: 0.00025674088686342003
+  max_grad_norm: 1
+  total_timesteps: 1_000_000
+  eval_freq: 50_000
+  gamma: 0.995
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  # normalize_observations: true
+
+dqn:
+  env: Breakout-MinAtar
+  agent: ConvQNetwork
+  agent_kwargs:
+    activation: tanh
+  num_envs: 1
+  buffer_size: 100_000
+  fill_buffer: 20_000
+  batch_size: 100
+  max_grad_norm: 10
+  learning_rate: 0.0005
+  gradient_steps: 1
+  total_timesteps: 1_000_000
+  eval_freq: 50_000
+  target_update_freq: 1000
+  eps_start: 1
+  eps_end: 0.05
+  exploration_fraction: 0.5
+  gamma: 1.0
+  ddqn: false
