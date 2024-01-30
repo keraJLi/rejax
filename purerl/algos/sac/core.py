@@ -155,6 +155,25 @@ class SquashedGaussianActor(nn.Module):
 
         return action, action_log_prob
 
+    def log_prob(self, obs, action):
+        obs = obs.reshape((obs.shape[0], -1))
+        features = self.features(obs)
+        action_mean = self.action_mean(features)
+        action_log_std = self.action_log_std(features)
+        action_log_std = jnp.clip(
+            action_log_std, *self.log_std_range
+        )  # TODO: tanh transform
+
+        action_dist = distrax.MultivariateNormalDiag(
+            loc=action_mean, scale_diag=jnp.exp(action_log_std)
+        )
+
+        action = (action - self.action_loc) / self.action_scale
+        action, log_det_j = self.bij.inverse_and_log_det(action)
+        action_log_prob = action_dist.log_prob(action)
+        action_log_prob += log_det_j.sum(axis=-1)
+        return action_log_prob
+
     def act(self, obs, rng):
         action, _ = self(obs, rng)
         return action
@@ -212,6 +231,9 @@ class SACAgentContinuous(nn.Module):
 
     def log_alpha(self):
         return self.log_alpha
+
+    def log_prob(self, obs, action):
+        return self.actor.log_prob(obs, action)
 
 
 class DiscreteActor(nn.Module):

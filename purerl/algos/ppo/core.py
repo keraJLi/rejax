@@ -3,8 +3,8 @@ import distrax
 from jax import numpy as jnp
 from flax import struct, linen as nn
 from typing import Any, Callable, Tuple
-from flax.linen.initializers import constant
 from gymnax.environments.environment import Environment
+from flax.linen.initializers import constant, orthogonal
 
 
 class PPOConfig(struct.PyTreeNode):
@@ -47,7 +47,7 @@ class PPOConfig(struct.PyTreeNode):
         config = deepcopy(config)  # Because we're popping from it
 
         # Get env id and convert to gymnax environment and parameters
-        env_kwargs = config.pop("env_kwargs", {})
+        env_kwargs = config.pop("env_kwargs", None) or {}
         env_id = config.pop("env")
         if env_id.startswith("brax"):
             env = Brax2GymnaxEnv(env_id.split("/")[1], **env_kwargs)
@@ -92,12 +92,22 @@ class PPOAgent(nn.Module):
     activation: Callable = nn.tanh
 
     def setup(self):
-        value_ = [nn.Dense(s) for s in self.hidden_layer_sizes]
-        value_.append(nn.Dense(1))
+        value_ = [
+            nn.Dense(s, kernel_init=orthogonal(jnp.sqrt(2)), bias_init=constant(0))
+            for s in self.hidden_layer_sizes
+        ]
+        value_.append(nn.Dense(1, kernel_init=orthogonal(0.01), bias_init=constant(0)))
         self.value_ = value_
 
-        action_ = [nn.Dense(s) for s in self.hidden_layer_sizes]
-        action_.append(nn.Dense(self.action_dim))
+        action_ = [
+            nn.Dense(s, kernel_init=orthogonal(jnp.sqrt(2)), bias_init=constant(0))
+            for s in self.hidden_layer_sizes
+        ]
+        action_.append(
+            nn.Dense(
+                self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0)
+            )
+        )
         self.action_ = action_
 
         self.action_log_std = self.param(
