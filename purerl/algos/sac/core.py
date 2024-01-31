@@ -135,40 +135,30 @@ class SquashedGaussianActor(nn.Module):
     def action_scale(self):
         return (self.action_range[1] - self.action_range[0]) / 2
 
-    def __call__(self, x, rng):
-        x = x.reshape((x.shape[0], -1))
-        features = self.features(x)
-        action_mean = self.action_mean(features)
-        action_log_std = self.action_log_std(features)
-        action_log_std = jnp.clip(
-            action_log_std, *self.log_std_range
-        )  # TODO: tanh transform
-
-        action_dist = distrax.MultivariateNormalDiag(
-            loc=action_mean, scale_diag=jnp.exp(action_log_std)
-        )
-
-        action = action_dist.sample(seed=rng)
-        action_log_prob = action_dist.log_prob(action)
-        action, log_det_j = self.bij.forward_and_log_det(action)
-        action = self.action_loc + action * self.action_scale
-        action_log_prob -= log_det_j.sum(axis=-1)
-
-        return action, action_log_prob
-
-    def log_prob(self, obs, action):
+    def action_dist(self, obs):
         obs = obs.reshape((obs.shape[0], -1))
         features = self.features(obs)
         action_mean = self.action_mean(features)
         action_log_std = self.action_log_std(features)
         action_log_std = jnp.clip(
             action_log_std, *self.log_std_range
-        )  # TODO: tanh transform
+        ) # TODO: tanh transform
 
-        action_dist = distrax.MultivariateNormalDiag(
+        return distrax.MultivariateNormalDiag(
             loc=action_mean, scale_diag=jnp.exp(action_log_std)
         )
 
+    def __call__(self, x, rng):
+        action_dist = self.action_dist(x)
+        action = action_dist.sample(seed=rng)
+        action_log_prob = action_dist.log_prob(action)
+        action, log_det_j = self.bij.forward_and_log_det(action)
+        action = self.action_loc + action * self.action_scale
+        action_log_prob -= log_det_j.sum(axis=-1)
+        return action, action_log_prob
+
+    def log_prob(self, obs, action):
+        action_dist = self.action_dist(obs)
         action = (action - self.action_loc) / self.action_scale
         action, log_det_j = self.bij.inverse_and_log_det(action)
         action_log_prob = action_dist.log_prob(action)
