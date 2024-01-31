@@ -2,7 +2,7 @@ import chex
 import distrax
 from jax import numpy as jnp
 from flax import struct, linen as nn
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Tuple, Union
 from gymnax.environments.environment import Environment
 from flax.linen.initializers import constant, orthogonal
 
@@ -64,6 +64,11 @@ class PPOConfig(struct.PyTreeNode):
             action_dim = env.action_space(env_params).n
         else:
             action_dim = np.prod(env.action_space(env_params).shape)
+            action_range = (
+                env.action_space(env_params).low,
+                env.action_space(env_params).high,
+            )
+            agent_kwargs["action_range"] = action_range
 
         activation = agent_kwargs.pop("activation", "relu")
         agent_kwargs["activation"] = getattr(nn, activation)
@@ -88,10 +93,16 @@ class PPOConfig(struct.PyTreeNode):
 class PPOAgent(nn.Module):
     action_dim: int
     discrete: bool
+    action_range: Union[Tuple[float, float], None] = None
     hidden_layer_sizes: Tuple[int] = (64, 64)
     activation: Callable = nn.tanh
 
     def setup(self):
+        if not self.discrete and self.action_range is None:
+            raise ValueError(
+                "Continuous action space requires action_range to be specified"
+            )
+
         value_ = [
             nn.Dense(s, kernel_init=orthogonal(jnp.sqrt(2)), bias_init=constant(0))
             for s in self.hidden_layer_sizes
@@ -148,6 +159,8 @@ class PPOAgent(nn.Module):
     def act(self, obs, rng):
         action_dist = self._action_dist(obs)
         action = action_dist.sample(seed=rng)
+        if not self.discrete:
+            action = jnp.clip(action, self.action_range[0], self.action_range[1])
         return action
 
     def action_log_prob(self, obs, rng):
