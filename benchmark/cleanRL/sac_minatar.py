@@ -378,5 +378,5 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
 
     end_time = time.time()
 
-    with open(f"runs/times_sac_minatar_{args.env_id}.txt", "a+") as f:
+    with open(f"runs/times_sac_minatar_{args.env_id.replace('/', '_')}.txt", "a+") as f:
         f.write(f"{end_time - start_time}\n")

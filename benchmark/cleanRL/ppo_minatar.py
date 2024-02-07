@@ -351,5 +351,5 @@ if __name__ == "__main__":
 
     end_time = time.time()
 
-    with open(f"runs/times_ppo_minatar_{args.env_id}.txt", "a+") as f:
+    with open(f"runs/times_ppo_minatar_{args.env_id.replace('/', '_')}.txt", "a+") as f:
         f.write(f"{end_time - start_time}\n")
