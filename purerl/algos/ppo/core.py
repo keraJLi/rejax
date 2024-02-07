@@ -8,28 +8,30 @@ from flax.linen.initializers import constant, orthogonal
 
 
 class PPOConfig(struct.PyTreeNode):
+    # fmt: off
     # Non-static parameters
-    env_params: Any
-    gamma: chex.Scalar
-    gae_lambda: chex.Scalar
-    clip_eps: chex.Scalar
-    vf_coef: chex.Scalar
-    ent_coef: chex.Scalar
-    learning_rate: chex.Scalar
+    env_params: Any                 = struct.field(pytree_node=True)
+    gamma: chex.Scalar              = struct.field(pytree_node=True, default=0.99)
+    gae_lambda: chex.Scalar         = struct.field(pytree_node=True, default=0.95)
+    clip_eps: chex.Scalar           = struct.field(pytree_node=True, default=0.2)
+    vf_coef: chex.Scalar            = struct.field(pytree_node=True, default=0.5)
+    ent_coef: chex.Scalar           = struct.field(pytree_node=True, default=0.01)
+    learning_rate: chex.Scalar      = struct.field(pytree_node=True, default=0.0005)
 
     # Static parameters
-    total_timesteps: int = struct.field(pytree_node=False)
-    eval_freq: int = struct.field(pytree_node=False)
-    agent: nn.Module = struct.field(pytree_node=False)
-    env: Environment = struct.field(pytree_node=False)
-    eval_callback: Callable = struct.field(pytree_node=False)
-    num_envs: int = struct.field(pytree_node=False)
-    num_steps: int = struct.field(pytree_node=False)
-    num_epochs: int = struct.field(pytree_node=False)
-    num_minibatches: int = struct.field(pytree_node=False)
-    max_grad_norm: chex.Scalar = struct.field(pytree_node=False)
-    normalize_observations: bool = struct.field(pytree_node=False, default=False)
-    skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
+    total_timesteps: int            = struct.field(pytree_node=False, default=100_000)
+    eval_freq: int                  = struct.field(pytree_node=False, default=10_000)
+    agent: nn.Module                = struct.field(pytree_node=False)
+    env: Environment                = struct.field(pytree_node=False)
+    eval_callback: Callable         = struct.field(pytree_node=False)
+    num_envs: int                   = struct.field(pytree_node=False, default=100)
+    num_steps: int                  = struct.field(pytree_node=False, default=50)
+    num_epochs: int                 = struct.field(pytree_node=False, default=5)
+    num_minibatches: int            = struct.field(pytree_node=False, default=10)
+    max_grad_norm: chex.Scalar      = struct.field(pytree_node=False, default=jnp.inf)
+    normalize_observations: bool    = struct.field(pytree_node=False, default=False)
+    skip_initial_evaluation: bool   = struct.field(pytree_node=False, default=False)
+    # fmt: on
 
     @property
     def minibatch_size(self):
@@ -61,13 +63,10 @@ class PPOConfig(struct.PyTreeNode):
         agent_kwargs["discrete"] = discrete
 
         if discrete:
-            action_dim = env.action_space(env_params).n
+            action_dim = action_space.n
         else:
-            action_dim = np.prod(env.action_space(env_params).shape)
-            action_range = (
-                env.action_space(env_params).low,
-                env.action_space(env_params).high,
-            )
+            action_dim = np.prod(action_space.shape)
+            action_range = (action_space.low, action_space.high)
             agent_kwargs["action_range"] = action_range
 
         activation = agent_kwargs.pop("activation", "relu")

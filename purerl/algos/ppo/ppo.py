@@ -78,8 +78,11 @@ class PPO(Algorithm):
         return train_state
 
     @classmethod
-    def train(cls, config, rng):
-        ts = cls.initialize_train_state(config, rng)
+    def train(cls, config, train_state=None, rng=None):
+        if not (train_state or rng):
+            raise ValueError("Either train_state or rng must be provided")
+
+        ts = train_state or cls.initialize_train_state(config, rng)
 
         if not config.skip_initial_evaluation:
             initial_evaluation = config.eval_callback(config, ts, ts.rng)
