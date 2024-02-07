@@ -11,6 +11,10 @@ class PPOConfig(struct.PyTreeNode):
     # fmt: off
     # Non-static parameters
     env_params: Any                 = struct.field(pytree_node=True)
+    agent: nn.Module                = struct.field(pytree_node=False)
+    env: Environment                = struct.field(pytree_node=False)
+    eval_callback: Callable         = struct.field(pytree_node=False)
+
     gamma: chex.Scalar              = struct.field(pytree_node=True, default=0.99)
     gae_lambda: chex.Scalar         = struct.field(pytree_node=True, default=0.95)
     clip_eps: chex.Scalar           = struct.field(pytree_node=True, default=0.2)
@@ -21,9 +25,6 @@ class PPOConfig(struct.PyTreeNode):
     # Static parameters
     total_timesteps: int            = struct.field(pytree_node=False, default=100_000)
     eval_freq: int                  = struct.field(pytree_node=False, default=10_000)
-    agent: nn.Module                = struct.field(pytree_node=False)
-    env: Environment                = struct.field(pytree_node=False)
-    eval_callback: Callable         = struct.field(pytree_node=False)
     num_envs: int                   = struct.field(pytree_node=False, default=100)
     num_steps: int                  = struct.field(pytree_node=False, default=50)
     num_epochs: int                 = struct.field(pytree_node=False, default=5)

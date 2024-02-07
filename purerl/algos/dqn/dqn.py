@@ -30,7 +30,7 @@ class DQNTrainState(TrainState):
 class DQN(Algorithm):
     @classmethod
     def train(cls, config, rng=None, train_state=None):
-        if not (train_state or rng):
+        if train_state is None and rng is None:
             raise ValueError("Either train_state or rng must be provided")
 
         ts = train_state or cls.initialize_train_state(config, rng)
