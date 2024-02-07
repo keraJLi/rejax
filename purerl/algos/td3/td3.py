@@ -39,7 +39,7 @@ class TD3TrainState(struct.PyTreeNode):
 
 class TD3(Algorithm):
     @classmethod
-    def train(cls, config, train_state=None, rng=None):
+    def train(cls, config, rng=None, train_state=None):
         if not (train_state or rng):
             raise ValueError("Either train_state or rng must be provided")
 
