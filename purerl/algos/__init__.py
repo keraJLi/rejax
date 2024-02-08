@@ -29,8 +29,8 @@ _agents = {
 
 def get_agent(agent_str):
     train_fn, config_cls = _agents[agent_str]
-    train_fn = lambda config, rng: train_fn(config, rng=rng)
-    return train_fn, config_cls
+    rng_only_train_fn = lambda config, rng: train_fn(config, rng=rng)
+    return rng_only_train_fn, config_cls
 
 
 __all__ = [
