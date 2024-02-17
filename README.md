@@ -1,6 +1,4 @@
-# pureRL
-
-Fully vectorizable reinforcement learning algorithms in jax!
+# pureRL - Fully vectorizable reinforcement learning algorithms in jax!
 
 ## Vectorize training for incledible speedups!
 `vmap` over initial seeds or hyperparameters to train a whole batch of agents in parallel! 
@@ -24,9 +22,10 @@ vmap_train = jax.vmap(jax.jit(train_fn), in_axes=(None, 0))
 train_state, evaluation = vmap_train(train_config, keys)
 ```
 
-![Speedup over cleanRL](img/speedup.svg)
+![Speedup over cleanRL](img/speedup_brax.svg)
+![Speedup over cleanRL](img/speedup_minatar.svg)
 
-Benchmark on an A100 and a Intel Xeon 4215R CPU.
+Benchmark on an A100 80G and a Intel Xeon 4215R CPU. Note that the hyperparameters were set to the default values of cleanRL, including buffer sizes. Shrinking the buffers can yield additional speedups due to better caching, and enables training of even more agents in parallel.
 
 ## Algorithms
 | Algorithm | Discrete | Continuous        | Notes                     |
@@ -39,6 +38,7 @@ Benchmark on an A100 and a Intel Xeon 4215R CPU.
 
 
 ## Built for researchers
+The implementations focus on clarity! 
 Easily modify the implemented algorithms by overwriting isolated parts, such as the loss function, trajectory generation or parameter updates.
 Algorithms are implemented as stateless classes containing only class methods. This allows for an explicit differentiation between
 
@@ -47,6 +47,8 @@ Algorithms are implemented as stateless classes containing only class methods. T
 - **Train state** including the current environment state, network parameters, global step, ... (flax.PyTreeNode)
 
 All algorithms implement `algo.train(config, rng)`, where `config` is a PyTreeNode. This function can be jitted and vmapped over in both inputs. For a quick start, you can get the train function and config class from `get_agent(algorithm: str) -> Tuple[Callable, PyTreeNode]`, and use `config.from_dict` to load a dictionary config.
+
+The exact API is likely to change to allow for more flexibility, but I aim to keep it at least as simple as this.
 
 ## Flexible callbacks
 The config of all algorithms includes a callback function `callback(config, train_state, rng) -> PyTree`, which is called every `eval_freq` training steps with the config and current train state. The output of the callback will be aggregated over training and returned by the train function. The default callback runs a number of episodes in the training environment and returns their length and episodic return, such that the train function returns a training curve.
