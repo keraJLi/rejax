@@ -38,7 +38,7 @@ ppo:
   normalize_observations: true
 
 
-# tuned (still bad)
+# tuned
 ddpg:
   env: brax/hopper
   agent_kwargs:
@@ -55,3 +55,29 @@ ddpg:
   tau: 0.98
   max_grad_norm: 1
   exploration_noise: 0.2
+  normalize_observations: true
+
+
+# tuned
+td3:
+  env: brax/hopper
+  actor_kwargs:
+    activation: tanh
+  critic_kwargs:
+    activation: tanh
+  num_envs: 128
+  buffer_size: 1048576
+  fill_buffer: 8192
+  batch_size: 256
+  learning_rate: 0.00018789279685460533
+  gradient_steps: 128
+  total_timesteps: 5242880
+  eval_freq: 262144
+  gamma: 0.995
+  tau: 0.95
+  max_grad_norm: 2
+  exploration_noise: 0.5
+  target_noise: 0.8
+  target_noise_clip: 0.5
+  policy_delay: 3
+  normalize_observations: true

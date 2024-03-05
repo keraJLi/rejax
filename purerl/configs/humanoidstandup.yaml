@@ -1,25 +1,25 @@
 # tuned
 sac:
-  env: brax/halfcheetah
+  env: brax/humanoidstandup
   agent_kwargs:
     activation: tanh
   num_envs: 128
-  buffer_size: 1_000_000
-  fill_buffer: 10_000
-  batch_size: 512
-  learning_rate: 0.00020495107742294415
+  buffer_size: 1048576
+  fill_buffer: 8192
+  batch_size: 256
+  learning_rate: 0.00020366442026830908
   gradient_steps: 128
   total_timesteps: 5242880
   eval_freq: 32768
-  gamma: 0.98
-  tau: 0.995
+  gamma: 0.99
+  tau: 0.99
   target_entropy_ratio: 0
   normalize_observations: true
 
 
 # tuned
 ppo:
-  env: brax/halfcheetah
+  env: brax/humanoidstandup
   agent_kwargs:
     activation: tanh
   num_envs: 32
@@ -40,7 +40,7 @@ ppo:
 
 # tuned
 ddpg:
-  env: brax/halfcheetah
+  env: brax/humanoidstandup
   agent_kwargs:
     activation: tanh
   num_envs: 128
@@ -57,9 +57,10 @@ ddpg:
   exploration_noise: 0.5
   normalize_observations: true
 
+
 # tuned
 td3:
-  env: brax/halfcheetah
+  env: brax/humanoidstandup
   actor_kwargs:
     activation: tanh
   critic_kwargs:
@@ -67,16 +68,16 @@ td3:
   num_envs: 128
   buffer_size: 1048576
   fill_buffer: 8192
-  batch_size: 512
-  learning_rate: 0.0001199272452295516
+  batch_size: 256
+  learning_rate: 0.0001538065811598203
   gradient_steps: 128
   total_timesteps: 5242880
   eval_freq: 262144
   gamma: 0.99
-  tau: 0.99
-  max_grad_norm: 5
-  exploration_noise: 0.3
-  target_noise: 0.8
-  target_noise_clip: 0.6
-  policy_delay: 1
+  tau: 0.95
+  max_grad_norm: 0.2
+  exploration_noise: 0.8
+  target_noise: 1.0
+  target_noise_clip: 0.9
+  policy_delay: 10
   normalize_observations: true
