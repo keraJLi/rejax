@@ -1,5 +1,7 @@
-import jax
+import sys
 import timeit
+
+import jax
 import jax.numpy as jnp
 from matplotlib import pyplot as plt
 
@@ -8,18 +10,29 @@ from purerl.algos import get_agent
 
 def main(algo_str, config, seed_id, num_seeds, time_fit):
     train_fn, config_cls = get_agent(algo_str)
-    train_config = config_cls.from_dict(config)
+    old_train_config = config_cls.from_dict(config)
+
+    def eval_callback(config, ts, rng):
+        evaluation = old_train_config.eval_callback(config, ts, rng)
+        jax.debug.print(
+            "Step {}, {}", ts.global_step, jax.tree_map(lambda x: x.mean(), evaluation)
+        )
+        return evaluation
+
+    train_config = old_train_config.replace(eval_callback=eval_callback)
 
     # Train it
     key = jax.random.PRNGKey(seed_id)
     keys = jax.random.split(key, num_seeds)
 
-    vmap_train = jax.vmap(train_fn, in_axes=(None, 0))
+    vmap_train = jax.jit(jax.vmap(train_fn, in_axes=(None, 0)))
     _, (_, returns) = vmap_train(train_config, keys)
+    print(f"Achieved mean return of {returns.mean(axis=-1)[:, -1]}")
 
+    t = jnp.arange(returns.shape[1]) * train_config.eval_freq
     colors = plt.cm.cool(jnp.linspace(0, 1, num_seeds))
     for i in range(num_seeds):
-        plt.plot(returns.mean(axis=-1)[i], c=colors[i])
+        plt.plot(t, returns.mean(axis=-1)[i], c=colors[i])
     plt.show()
 
     if time_fit:
@@ -37,6 +50,7 @@ def main(algo_str, config, seed_id, num_seeds, time_fit):
 
 if __name__ == "__main__":
     import argparse
+
     from mle_logging import load_config
 
     parser = argparse.ArgumentParser()

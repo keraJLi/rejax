@@ -1,16 +1,16 @@
 ppo:
   env: Pendulum-v1
   agent_kwargs:
-    activation: relu
-  num_envs: 5
+    activation: swish
+  num_envs: 100
   num_steps: 100
   num_epochs: 10
   num_minibatches: 10
-  learning_rate: 0.0003
+  learning_rate: 0.001
   max_grad_norm: 10
-  total_timesteps: 200_000
+  total_timesteps: 150_000
   eval_freq: 2000
-  gamma: 0.9
+  gamma: 0.995
   gae_lambda: 0.95
   clip_eps: 0.2
   ent_coef: 0.0
@@ -21,7 +21,7 @@ ppo:
 sac:
   env: Pendulum-v1
   agent_kwargs:
-    activation: tanh
+    activation: swish
   num_envs: 1
   buffer_size: 10_000
   fill_buffer: 256
@@ -39,7 +39,7 @@ sac:
 ddpg:
   env: Pendulum-v1
   agent_kwargs:
-    activation: tanh
+    activation: swish
   num_envs: 1
   buffer_size: 5_000
   fill_buffer: 1000
@@ -58,21 +58,21 @@ ddpg:
 td3:
   env: Pendulum-v1
   actor_kwargs:
-      activation: relu
+      activation: swish
   critic_kwargs:
-      activation: relu
+      activation: swish
   num_envs: 1
   buffer_size: 10_000
   fill_buffer: 1000
   batch_size: 100
-  learning_rate: 0.002
+  learning_rate: 0.001
   gradient_steps: 1
   total_timesteps: 10_000
   eval_freq: 100
-  gamma: 0.98
-  tau: 0.995
-  max_grad_norm: 10
-  exploration_noise: 0.2
+  gamma: 0.99
+  tau: 0.95
+  max_grad_norm: 100
+  exploration_noise: 0.3
   target_noise: 0.2
   target_noise_clip: 0.5
   policy_delay: 2

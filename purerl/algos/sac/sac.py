@@ -1,21 +1,24 @@
 from typing import Any
 
-import jax
 import chex
-import optax
+import jax
 import numpy as np
-from jax import numpy as jnp
+import optax
 from flax.core.frozen_dict import FrozenDict
+from flax.struct import PyTreeNode
 from flax.training.train_state import TrainState
+from jax import numpy as jnp
 
 from purerl.algos.algorithm import Algorithm
 from purerl.algos.buffers import Minibatch, ReplayBuffer
-from purerl.normalize import RMSState, update_rms, normalize_obs
+from purerl.normalize import RMSState, normalize_obs, update_rms
 
 
-class SACTrainState(TrainState):
-    # TODO: we are storing the actor params twice, unncessary
-    target_params: FrozenDict
+class SACTrainState(PyTreeNode):
+    alpha_ts: TrainState
+    actor_ts: TrainState
+    critic_ts: TrainState
+    critic_target_params: FrozenDict
     replay_buffer: ReplayBuffer
     env_state: Any
     last_obs: chex.Array
@@ -23,12 +26,87 @@ class SACTrainState(TrainState):
     rms_state: RMSState
     rng: chex.PRNGKey
 
+    @property
+    def params(self):
+        """Backward compatibility with old evaluation creation"""
+        return self.actor_ts.params
+
     def get_rng(self):
         rng, rng_new = jax.random.split(self.rng)
         return self.replace(rng=rng), rng_new
 
 
 class SAC(Algorithm):
+    @classmethod
+    def make_act(cls, config, ts):
+        def act(obs, rng):
+            if getattr(config, "normalize_observations", False):
+                obs = normalize_obs(ts.rms_state, obs)
+
+            obs = jnp.expand_dims(obs, 0)
+            action = config.actor.apply(ts.params, obs, rng, method="act")
+            return jnp.squeeze(action)
+
+        return act
+
+    @classmethod
+    def initialize_train_state(cls, config, rng):
+        # Initialize optimizer
+        tx = optax.adam(config.learning_rate, eps=1e-5)
+
+        # Initialize network parameters and train states
+        rng, rng_actor, rng_critic = jax.random.split(rng, 3)
+        rng_critic = jax.random.split(rng_critic, 2)
+        obs_ph = jnp.empty((1, *config.env.observation_space(config.env_params).shape))
+        actor_params = config.actor.init(rng_actor, obs_ph, rng_actor)
+        actor_ts = TrainState.create(apply_fn=(), params=actor_params, tx=tx)
+
+        if config.discrete:
+            critic_params = jax.vmap(config.critic.init, in_axes=(0, None))(
+                rng_critic, obs_ph
+            )
+        else:
+            act_ph = jnp.empty((1, *config.env.action_space(config.env_params).shape))
+            critic_params = jax.vmap(config.critic.init, in_axes=(0, None, None))(
+                rng_critic, obs_ph, act_ph
+            )
+        critic_ts = TrainState.create(apply_fn=(), params=critic_params, tx=tx)
+
+        alpha_ts = TrainState.create(apply_fn=(), params=jnp.array(0.0), tx=tx)
+
+        # Initialize environment
+        rng, rng_reset = jax.random.split(rng)
+        rng_reset = jax.random.split(rng_reset, config.num_envs)
+        vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
+        obs, env_state = vmap_reset(rng_reset, config.env_params)
+
+        # Initialize replay buffer
+        replay_buffer = ReplayBuffer.empty(
+            size=config.buffer_size,
+            obs_space=config.env.observation_space(config.env_params),
+            action_space=config.env.action_space(config.env_params),
+        )
+
+        # Initialize observation normalization
+        rms_state = RMSState.create(obs.shape[1:])
+        if config.normalize_observations:
+            rms_state = update_rms(rms_state, obs)
+
+        train_state = SACTrainState(
+            alpha_ts=alpha_ts,
+            actor_ts=actor_ts,
+            critic_ts=critic_ts,
+            critic_target_params=critic_params,
+            env_state=env_state,
+            last_obs=obs,
+            replay_buffer=replay_buffer,
+            global_step=0,
+            rms_state=rms_state,
+            rng=rng,
+        )
+
+        return train_state
+
     @classmethod
     def train(cls, config, rng=None, train_state=None):
         if train_state is None and rng is None:
@@ -68,44 +146,6 @@ class SAC(Algorithm):
         return ts, evaluation
 
     @classmethod
-    def initialize_train_state(cls, config, rng):
-        rng, rng_agent = jax.random.split(rng)
-
-        obs_shape = config.env.observation_space(config.env_params).shape
-        params = config.agent.init(rng_agent, jnp.zeros((1, *obs_shape)), rng_agent)
-        tx = optax.adam(config.learning_rate, eps=1e-5)
-
-        rng, rng_reset = jax.random.split(rng)
-        rng_reset = jax.random.split(rng_reset, config.num_envs)
-        vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
-        obs, env_state = vmap_reset(rng_reset, config.env_params)
-
-        replay_buffer = ReplayBuffer.empty(
-            size=config.buffer_size,
-            obs_space=config.env.observation_space(config.env_params),
-            action_space=config.env.action_space(config.env_params),
-        )
-
-        rms_state = RMSState.create(obs.shape[1:])
-        if config.normalize_observations:
-            rms_state = update_rms(rms_state, obs)
-
-        train_state = SACTrainState.create(
-            apply_fn=config.agent.apply,
-            params=params,
-            target_params=params,
-            replay_buffer=replay_buffer,
-            env_state=env_state,
-            tx=tx,
-            last_obs=obs,
-            global_step=0,
-            rms_state=rms_state,
-            rng=rng,
-        )
-
-        return train_state
-
-    @classmethod
     def train_iteration(cls, config, ts):
         # Collect transitions
         ts, transitions = cls.collect_transitions(config, ts)
@@ -136,12 +176,12 @@ class SAC(Algorithm):
         )
 
         # Update target network
-        target_params = jax.tree_map(
+        critic_target_params = jax.tree_map(
             lambda q, qt: (1 - config.tau) * q + config.tau * qt,
-            ts.params,
-            ts.target_params,
+            ts.critic_ts.params,
+            ts.critic_target_params,
         )
-        ts = ts.replace(target_params=target_params)
+        ts = ts.replace(critic_target_params=critic_target_params)
 
         return ts
 
@@ -155,7 +195,9 @@ class SAC(Algorithm):
 
         # Sample actions
         ts, rng_action = ts.get_rng()
-        actions = ts.apply_fn(ts.params, last_obs, rng_action, method="act")
+        actions = config.actor.apply(
+            ts.actor_ts.params, last_obs, rng_action, method="act"
+        )
 
         # Step environment
         ts, rng_steps = ts.get_rng()
@@ -184,54 +226,93 @@ class SAC(Algorithm):
         return ts, minibatch
 
     @classmethod
-    def update(cls, config, ts, mb):
+    def udpate_actor(cls, config, ts, mb):
         ts, rng = ts.get_rng()
-        rng_target, rng_pi = jax.random.split(rng, 2)
+        alpha = jnp.exp(ts.alpha_ts.params)
 
-        # In the discrete case, we need to compute the q values of all actions to compute
-        # the full expectation
-        q_all = "q_all" if config.discrete else "q"
-        log_alpha = ts.apply_fn(ts.params, method="log_alpha")
-        alpha = jnp.exp(log_alpha)
-
-        def q_loss_fn(params):
-            # Calculate target without gradient wrt `params``
-            action, logprob = ts.apply_fn(
-                ts.params, mb.next_obs, rng_target, method="pi"
-            )
-            q1, q2 = ts.apply_fn(ts.target_params, mb.next_obs, action, method=q_all)
-            q_target = jnp.minimum(q1, q2) - alpha * logprob
+        def actor_loss_fn(params):
             if config.discrete:
-                q_target = jnp.sum(jnp.exp(logprob) * q_target, axis=1)
-            target = mb.reward + config.gamma * (1 - mb.done) * q_target
+                logprob = jnp.log(
+                    config.actor.apply(params, mb.obs, method="_action_dist").probs
+                )
+                q1, q2 = jax.vmap(config.critic.apply, in_axes=(0, None))(
+                    ts.critic_ts.params, mb.obs
+                )
+                loss_pi = alpha * logprob - jnp.minimum(q1, q2)
+                loss_pi = jnp.sum(jnp.exp(logprob) * loss_pi, axis=1)
+            else:
+                action, logprob = config.actor.apply(
+                    params, mb.obs, rng, method="action_log_prob"
+                )
+                q1, q2 = jax.vmap(config.critic.apply, in_axes=(0, None, None))(
+                    ts.critic_ts.params, mb.obs, action
+                )
+                loss_pi = alpha * logprob - jnp.minimum(q1, q2)
+            return loss_pi.mean(), logprob
 
-            # Calculate MSBE wrt `params`
-            q1, q2 = ts.apply_fn(params, mb.obs, mb.action, method="q")
+        grads, logprob = jax.grad(actor_loss_fn, has_aux=True)(ts.actor_ts.params)
+        ts = ts.replace(actor_ts=ts.actor_ts.apply_gradients(grads=grads))
+        return ts, logprob
+
+    @classmethod
+    def update_critic(cls, config, ts, mb):
+        ts, rng = ts.get_rng()
+        alpha = jnp.exp(ts.alpha_ts.params)
+
+        def critic_loss_fn(params):
+            # Calculate target without gradient wrt `params``
+            if config.discrete:
+                logprob = jnp.log(
+                    config.actor.apply(
+                        ts.actor_ts.params, mb.next_obs, method="_action_dist"
+                    ).probs
+                )
+                q1, q2 = jax.vmap(config.critic.apply, in_axes=(0, None))(
+                    ts.critic_target_params, mb.next_obs
+                )
+                q_target = jnp.minimum(q1, q2) - alpha * logprob
+                q_target = jnp.sum(jnp.exp(logprob) * q_target, axis=1)
+
+                q1, q2 = jax.vmap(
+                    lambda *args: config.critic.apply(*args, method="take"),
+                    in_axes=(0, None, None),
+                )(params, mb.obs, mb.action)
+            else:
+                action, logprob = config.actor.apply(
+                    ts.actor_ts.params, mb.next_obs, rng, method="action_log_prob"
+                )
+                q1, q2 = jax.vmap(config.critic.apply, in_axes=(0, None, None))(
+                    ts.critic_target_params, mb.next_obs, action
+                )
+                q_target = jnp.minimum(q1, q2) - alpha * logprob
+                q1, q2 = jax.vmap(config.critic.apply, in_axes=(0, None, None))(
+                    params, mb.obs, mb.action
+                )
+
+            target = mb.reward + config.gamma * (1 - mb.done) * q_target
             loss_q1 = optax.l2_loss(q1, target).mean()
             loss_q2 = optax.l2_loss(q2, target).mean()
             return loss_q1 + loss_q2
 
-        def pi_loss_fn(params):
-            action, logprob = ts.apply_fn(params, mb.obs, rng_pi, method="pi")
-            q1, q2 = ts.apply_fn(ts.params, mb.obs, action, method=q_all)
-            loss_pi = alpha * logprob - jnp.minimum(q1, q2)
-            if config.discrete:
-                loss_pi = jnp.sum(jnp.exp(logprob) * loss_pi, axis=1)
-            return loss_pi.mean(), jax.lax.stop_gradient(logprob)
+        grads = jax.grad(critic_loss_fn)(ts.critic_ts.params)
+        ts = ts.replace(critic_ts=ts.critic_ts.apply_gradients(grads=grads))
+        return ts
 
-        def alpha_loss_fn(params, logprob):
-            log_alpha = ts.apply_fn(params, method="log_alpha")
+    @classmethod
+    def update_alpha(cls, config, ts, logprob):
+        def alpha_loss_fn(log_alpha, logprob):
             loss_alpha = -log_alpha * (logprob + config.target_entropy)
             if config.discrete:
                 loss_alpha = jnp.sum(jnp.exp(logprob) * loss_alpha, axis=1)
             return loss_alpha.mean()
 
-        def loss_fn(params):
-            q_loss = q_loss_fn(params)
-            pi_loss, logprob = pi_loss_fn(params)
-            alpha_loss = alpha_loss_fn(params, logprob)
-            return q_loss + pi_loss + alpha_loss
+        grads = jax.grad(alpha_loss_fn)(ts.alpha_ts.params, logprob)
+        ts = ts.replace(alpha_ts=ts.alpha_ts.apply_gradients(grads=grads))
+        return ts
 
-        grads = jax.grad(loss_fn)(ts.params)
-        ts = ts.apply_gradients(grads=grads)
+    @classmethod
+    def update(cls, config, ts, mb):
+        ts, logprob = cls.udpate_actor(config, ts, mb)
+        ts = cls.update_critic(config, ts, mb)
+        ts = cls.update_alpha(config, ts, logprob)
         return ts

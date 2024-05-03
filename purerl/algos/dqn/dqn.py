@@ -1,19 +1,21 @@
 from typing import Any
 
-import jax
 import chex
-import optax
+import jax
 import numpy as np
-from jax import numpy as jnp
+import optax
 from flax.core.frozen_dict import FrozenDict
+from flax.struct import PyTreeNode
 from flax.training.train_state import TrainState
+from jax import numpy as jnp
 
 from purerl.algos.algorithm import Algorithm
 from purerl.algos.buffers import Minibatch, ReplayBuffer
-from purerl.normalize import RMSState, update_rms, normalize_obs
+from purerl.normalize import RMSState, normalize_obs, update_rms
 
 
-class DQNTrainState(TrainState):
+class DQNTrainState(PyTreeNode):
+    q_ts: TrainState
     target_params: FrozenDict
     replay_buffer: ReplayBuffer
     env_state: Any
@@ -22,12 +24,70 @@ class DQNTrainState(TrainState):
     rms_state: RMSState
     rng: chex.PRNGKey
 
+    @property
+    def params(self):
+        return self.q_ts.params
+
     def get_rng(self):
         rng, rng_new = jax.random.split(self.rng)
         return self.replace(rng=rng), rng_new
 
 
 class DQN(Algorithm):
+    @classmethod
+    def make_act(cls, config, ts):
+        def act(obs, rng):
+            if getattr(config, "normalize_observations", False):
+                obs = normalize_obs(ts.rms_state, obs)
+
+            obs = jnp.expand_dims(obs, 0)
+            action = config.agent.apply(ts.params, obs, rng, method="act")
+            return jnp.squeeze(action)
+
+        return act
+
+    @classmethod
+    def initialize_train_state(cls, config, rng):
+        rng, rng_agent = jax.random.split(rng)
+        q_params = config.agent.init(
+            rng_agent,
+            jnp.zeros((1, *config.env.observation_space(config.env_params).shape)),
+        )
+        tx = optax.chain(
+            optax.clip_by_global_norm(config.max_grad_norm),
+            optax.adam(config.learning_rate, eps=1e-5),
+        )
+        q_ts = TrainState.create(apply_fn=(), params=q_params, tx=tx)
+        q_target_params = q_params
+
+        rng, rng_reset = jax.random.split(rng)
+        rng_reset = jax.random.split(rng_reset, config.num_envs)
+        vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
+        obs, env_state = vmap_reset(rng_reset, config.env_params)
+
+        replay_buffer = ReplayBuffer.empty(
+            size=config.buffer_size,
+            obs_space=config.env.observation_space(config.env_params),
+            action_space=config.env.action_space(config.env_params),
+        )
+
+        rms_state = RMSState.create(obs.shape[1:])
+        if config.normalize_observations:
+            rms_state = update_rms(rms_state, obs)
+
+        train_state = DQNTrainState(
+            q_ts=q_ts,
+            target_params=q_target_params,
+            env_state=env_state,
+            replay_buffer=replay_buffer,
+            last_obs=obs,
+            global_step=0,
+            rms_state=rms_state,
+            rng=rng,
+        )
+
+        return train_state
+
     @classmethod
     def train(cls, config, rng=None, train_state=None):
         if train_state is None and rng is None:
@@ -65,49 +125,6 @@ class DQN(Algorithm):
             )
 
         return ts, evaluation
-
-    @classmethod
-    def initialize_train_state(cls, config, rng):
-        rng, rng_agent = jax.random.split(rng)
-        q_params = config.agent.init(
-            rng_agent,
-            jnp.zeros((1, *config.env.observation_space(config.env_params).shape)),
-        )
-        q_target_params = q_params
-        tx = optax.chain(
-            optax.clip_by_global_norm(config.max_grad_norm),
-            optax.adam(config.learning_rate, eps=1e-5),
-        )
-
-        rng, rng_reset = jax.random.split(rng)
-        rng_reset = jax.random.split(rng_reset, config.num_envs)
-        vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
-        obs, env_state = vmap_reset(rng_reset, config.env_params)
-
-        replay_buffer = ReplayBuffer.empty(
-            size=config.buffer_size,
-            obs_space=config.env.observation_space(config.env_params),
-            action_space=config.env.action_space(config.env_params),
-        )
-
-        rms_state = RMSState.create(obs.shape[1:])
-        if config.normalize_observations:
-            rms_state = update_rms(rms_state, obs)
-
-        train_state = DQNTrainState.create(
-            apply_fn=config.agent.apply,
-            params=q_params,
-            target_params=q_target_params,
-            tx=tx,
-            env_state=env_state,
-            replay_buffer=replay_buffer,
-            last_obs=obs,
-            global_step=0,
-            rms_state=rms_state,
-            rng=rng,
-        )
-
-        return train_state
 
     @classmethod
     def train_iteration(cls, config, ts):
@@ -151,7 +168,7 @@ class DQN(Algorithm):
         )
         target_network = jax.tree_map(
             lambda q, qt: jax.lax.select(update_target_params, q, qt),
-            ts.params,
+            ts.q_ts.params,
             ts.target_params,
         )
         ts = ts.replace(target_params=target_network)
@@ -173,7 +190,9 @@ class DQN(Algorithm):
             else:
                 last_obs = ts.last_obs
 
-            return ts.apply_fn(ts.params, last_obs, rng, epsilon=epsilon, method="act")
+            return config.agent.apply(
+                ts.q_ts.params, last_obs, rng, epsilon=epsilon, method="act"
+            )
 
         actions = jax.lax.cond(uniform, sample_uniform, sample_policy, rng_action)
 
@@ -203,13 +222,13 @@ class DQN(Algorithm):
     @classmethod
     def update(cls, config, ts, minibatch):
         action = jnp.expand_dims(minibatch.action, 1)
-        next_q_target_values = ts.apply_fn(ts.target_params, minibatch.next_obs)
+        next_q_target_values = config.agent.apply(ts.target_params, minibatch.next_obs)
 
         def vanilla_targets(q_params):
             return jnp.max(next_q_target_values, axis=1)
 
         def ddqn_targets(q_params):
-            next_q_values = ts.apply_fn(q_params, minibatch.next_obs)
+            next_q_values = config.agent.apply(q_params, minibatch.next_obs)
             next_action = jnp.argmax(next_q_values, axis=1, keepdims=True)
             next_q_values_target = jnp.take_along_axis(
                 next_q_target_values, next_action, axis=1
@@ -217,7 +236,7 @@ class DQN(Algorithm):
             return next_q_values_target
 
         def loss_fn(q_params):
-            q_values = ts.apply_fn(q_params, minibatch.obs)
+            q_values = config.agent.apply(q_params, minibatch.obs)
             q_values = jnp.take_along_axis(q_values, action, axis=1).squeeze()
             next_q_values_target = jax.lax.cond(
                 config.ddqn, ddqn_targets, vanilla_targets, q_params
@@ -227,6 +246,6 @@ class DQN(Algorithm):
             loss = optax.l2_loss(q_values, targets).mean()
             return loss
 
-        grads = jax.grad(loss_fn)(ts.params)
-        ts = ts.apply_gradients(grads=grads)
+        grads = jax.grad(loss_fn)(ts.q_ts.params)
+        ts = ts.replace(q_ts=ts.q_ts.apply_gradients(grads=grads))
         return ts

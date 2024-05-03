@@ -1,19 +1,21 @@
-from typing import Any, NamedTuple
+from typing import Any
 
-import jax
 import chex
-import optax
+import gymnax
+import jax
 import numpy as np
-from jax import numpy as jnp
+import optax
+from flax.struct import PyTreeNode
 from flax.training.train_state import TrainState
+from jax import numpy as jnp
 
 from purerl.algos.algorithm import Algorithm
-from purerl.normalize import RMSState, update_and_normalize
+from purerl.normalize import RMSState, normalize_obs, update_and_normalize
 
 # TODO: fix step ratios and so on by implementing an eval tracker
 
 
-class Trajectory(NamedTuple):
+class Trajectory(PyTreeNode):
     obs: chex.Array
     action: chex.Array
     log_prob: chex.Array
@@ -22,19 +24,26 @@ class Trajectory(NamedTuple):
     done: chex.Array
 
 
-class AdvantageMinibatch(NamedTuple):
+class AdvantageMinibatch(PyTreeNode):
     trajectories: Trajectory
     advantages: chex.Array
     targets: chex.Array
 
 
-class PPOTrainState(TrainState):
+class PPOTrainState(PyTreeNode):
+    actor_ts: TrainState
+    critic_ts: TrainState
     env_state: Any
     last_obs: chex.Array
     last_done: chex.Array
     global_step: chex.Array
     rms_state: RMSState
     rng: chex.PRNGKey
+
+    @property
+    def params(self):
+        """Backward compatibility with old evaluation creation"""
+        return self.actor_ts.params
 
     def get_rng(self):
         rng, rng_new = jax.random.split(self.rng)
@@ -43,16 +52,33 @@ class PPOTrainState(TrainState):
 
 class PPO(Algorithm):
     @classmethod
+    def make_act(cls, config, ts):
+        def act(obs, rng):
+            if getattr(config, "normalize_observations", False):
+                obs = normalize_obs(ts.rms_state, obs)
+
+            obs = jnp.expand_dims(obs, 0)
+            action = config.actor.apply(ts.params, obs, rng, method="act")
+            return jnp.squeeze(action)
+
+        return act
+
+    @classmethod
     def initialize_train_state(cls, config, rng):
-        rng, rng_agent = jax.random.split(rng)
-        agent_params = config.agent.init(
-            rng_agent,
-            jnp.zeros((1, *config.env.observation_space(config.env_params).shape)),
-        )
+        # Initialize optimizer
         tx = optax.chain(
             optax.clip_by_global_norm(config.max_grad_norm),
             optax.adam(config.learning_rate, eps=1e-5),
         )
+
+        # Initialize network parameters and train states
+        rng, rng_actor, rng_critic = jax.random.split(rng, 3)
+        obs_ph = jnp.empty((1, *config.env.observation_space(config.env_params).shape))
+
+        actor_params = config.actor.init(rng_actor, obs_ph, rng_actor)
+        actor_ts = TrainState.create(apply_fn=(), params=actor_params, tx=tx)
+        critic_params = config.critic.init(rng_critic, obs_ph)
+        critic_ts = TrainState.create(apply_fn=(), params=critic_params, tx=tx)
 
         # Initialize environment
         rngs = jax.random.split(rng, config.num_envs + 1)
@@ -60,14 +86,14 @@ class PPO(Algorithm):
         vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
         obs, env_state = vmap_reset(env_rng, config.env_params)
 
+        # Initialize observation normalization
         rms_state = RMSState.create(obs.shape[1:])
         if config.normalize_observations:
             rms_state, obs = update_and_normalize(rms_state, obs)
 
-        train_state = PPOTrainState.create(
-            apply_fn=config.agent.apply,
-            params=agent_params,
-            tx=tx,
+        train_state = PPOTrainState(
+            actor_ts=actor_ts,
+            critic_ts=critic_ts,
             env_state=env_state,
             last_obs=obs,
             last_done=jnp.zeros(config.num_envs, dtype=bool),
@@ -121,11 +147,7 @@ class PPO(Algorithm):
     def train_iteration(cls, config, ts):
         ts, trajectories = cls.collect_trajectories(config, ts)
 
-        last_val = ts.apply_fn(
-            ts.params,
-            ts.last_obs,
-            method=config.agent.value,
-        )
+        last_val = config.critic.apply(ts.critic_ts.params, ts.last_obs)
         last_val = jnp.where(ts.last_done, jnp.zeros_like(last_val), last_val)
         advantages, targets = cls.calculate_gae(config, trajectories, last_val)
 
@@ -153,12 +175,15 @@ class PPO(Algorithm):
             rng_steps = jax.random.split(rng_steps, config.num_envs)
 
             # Sample action
-            unclipped_action, log_prob = ts.apply_fn(
-                ts.params, ts.last_obs, rng_action, method="action_log_prob"
+            unclipped_action, log_prob = config.actor.apply(
+                ts.actor_ts.params, ts.last_obs, rng_action, method="action_log_prob"
             )
-            value = ts.apply_fn(ts.params, ts.last_obs, method="value")
+            value = config.critic.apply(ts.critic_ts.params, ts.last_obs)
 
-            if config.agent.discrete:
+            if isinstance(
+                config.env.action_space(config.env_params),
+                gymnax.environments.spaces.Discrete,
+            ):
                 action = unclipped_action
             else:
                 low = config.env.action_space(config.env_params).low
@@ -228,19 +253,9 @@ class PPO(Algorithm):
         return minibatches
 
     @classmethod
-    def update(cls, config, ts, batch):
-        def v_loss_fn(params):
-            value = config.agent.apply(params, batch.trajectories.obs, method="value")
-            value_pred_clipped = batch.trajectories.value + (
-                value - batch.trajectories.value
-            ).clip(-config.clip_eps, config.clip_eps)
-            value_losses = jnp.square(value - batch.targets)
-            value_losses_clipped = jnp.square(value_pred_clipped - batch.targets)
-            value_loss = 0.5 * jnp.maximum(value_losses, value_losses_clipped).mean()
-            return value_loss
-
-        def pi_loss_fn(params):
-            log_prob, entropy = config.agent.apply(
+    def update_actor(cls, config, ts, batch):
+        def actor_loss_fn(params):
+            log_prob, entropy = config.actor.apply(
                 params,
                 batch.trajectories.obs,
                 batch.trajectories.action,
@@ -257,14 +272,28 @@ class PPO(Algorithm):
             pi_loss1 = ratio * advantages
             pi_loss2 = clipped_ratio * advantages
             pi_loss = -jnp.minimum(pi_loss1, pi_loss2).mean()
+            return pi_loss - config.ent_coef * entropy
 
-            return entropy, pi_loss
+        grads = jax.grad(actor_loss_fn)(ts.actor_ts.params)
+        return ts.replace(actor_ts=ts.actor_ts.apply_gradients(grads=grads))
 
-        def loss_fn(params):
-            v_loss = v_loss_fn(params)
-            entropy, pi_loss = pi_loss_fn(params)
-            return pi_loss + config.vf_coef * v_loss - config.ent_coef * entropy
+    @classmethod
+    def update_critic(cls, config, ts, batch):
+        def critic_loss_fn(params):
+            value = config.critic.apply(params, batch.trajectories.obs)
+            value_pred_clipped = batch.trajectories.value + (
+                value - batch.trajectories.value
+            ).clip(-config.clip_eps, config.clip_eps)
+            value_losses = jnp.square(value - batch.targets)
+            value_losses_clipped = jnp.square(value_pred_clipped - batch.targets)
+            value_loss = 0.5 * jnp.maximum(value_losses, value_losses_clipped).mean()
+            return config.vf_coef * value_loss
 
-        grads = jax.grad(loss_fn)(ts.params)
-        ts = ts.apply_gradients(grads=grads)
+        grads = jax.grad(critic_loss_fn)(ts.critic_ts.params)
+        return ts.replace(critic_ts=ts.critic_ts.apply_gradients(grads=grads))
+
+    @classmethod
+    def update(cls, config, ts, batch):
+        ts = cls.update_actor(config, ts, batch)
+        ts = cls.update_critic(config, ts, batch)
         return ts

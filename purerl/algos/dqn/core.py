@@ -1,37 +1,48 @@
+from copy import deepcopy
+from typing import Any, Callable
+
 import chex
-import distrax
-from jax import numpy as jnp
-from typing import Callable, Any
-from optax import linear_schedule
-from flax import struct, linen as nn
+import gymnax
+from flax import linen as nn
+from flax import struct
 from gymnax.environments.environment import Environment
+from jax import numpy as jnp
+from optax import linear_schedule
+
+from purerl.algos.dqn.dqn import DQN
+from purerl.algos.networks import DiscreteQNetwork, DuelingQNetwork, EpsilonGreedyPolicy
+from purerl.brax2gymnax import Brax2GymnaxEnv
+from purerl.evaluate import make_evaluate
 
 
 class DQNConfig(struct.PyTreeNode):
+    # fmt: off
     # Non-static parameters
-    env_params: Any
-    gamma: chex.Scalar
-    ddqn: bool
-    max_grad_norm: chex.Scalar
-    learning_rate: chex.Scalar
-    eps_start: chex.Scalar
-    eps_end: chex.Scalar
-    target_update_freq: int
+    env: Environment                = struct.field(pytree_node=False)
+    env_params: Any                 = struct.field(pytree_node=True)
+    agent: nn.Module                = struct.field(pytree_node=False)
+    eval_callback: Callable         = struct.field(pytree_node=False)
+
+    learning_rate: chex.Scalar      = struct.field(pytree_node=True, default=0.005)
+    gamma: chex.Scalar              = struct.field(pytree_node=True, default=0.99)
+    max_grad_norm: chex.Scalar      = struct.field(pytree_node=True, default=jnp.inf)
+    eps_start: chex.Scalar          = struct.field(pytree_node=True, default=1.0)
+    eps_end: chex.Scalar            = struct.field(pytree_node=True, default=0.05)
+    target_update_freq: int         = struct.field(pytree_node=True, default=200)
+    ddqn: bool                      = struct.field(pytree_node=True, default=True)
 
     # Static parameters
-    total_timesteps: int = struct.field(pytree_node=False)
-    eval_freq: int = struct.field(pytree_node=False)
-    agent: nn.Module = struct.field(pytree_node=False)
-    env: Environment = struct.field(pytree_node=False)
-    eval_callback: Callable = struct.field(pytree_node=False)
-    exploration_fraction: chex.Scalar = struct.field(pytree_node=False)
-    num_envs: int = struct.field(pytree_node=False)
-    buffer_size: int = struct.field(pytree_node=False)
-    fill_buffer: int = struct.field(pytree_node=False)
-    batch_size: int = struct.field(pytree_node=False)
-    gradient_steps: int = struct.field(pytree_node=False)
-    normalize_observations: bool = struct.field(pytree_node=False, default=False)
-    skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
+    total_timesteps: int            = struct.field(pytree_node=False, default=100_000)
+    eval_freq: int                  = struct.field(pytree_node=False, default=10_000)
+    num_envs: int                   = struct.field(pytree_node=False, default=1)
+    exploration_fraction: float     = struct.field(pytree_node=False, default=0.5)
+    buffer_size: int                = struct.field(pytree_node=False, default=100_000)
+    fill_buffer: int                = struct.field(pytree_node=False, default=1_000)
+    batch_size: int                 = struct.field(pytree_node=False, default=100)
+    gradient_steps: int             = struct.field(pytree_node=False, default=1)
+    normalize_observations: bool    = struct.field(pytree_node=False, default=False)
+    skip_initial_evaluation: bool   = struct.field(pytree_node=False, default=False)
+    # fmt: on
 
     @property
     def epsilon_schedule(self):
@@ -43,11 +54,6 @@ class DQNConfig(struct.PyTreeNode):
 
     @classmethod
     def from_dict(cls, config):
-        import gymnax
-        from copy import deepcopy
-        from purerl.evaluate import make_evaluate
-        from purerl.brax2gymnax import Brax2GymnaxEnv
-
         config = deepcopy(config)  # Because we're popping from it
 
         # Get env id and convert to gymnax environment and parameters
@@ -61,18 +67,19 @@ class DQNConfig(struct.PyTreeNode):
 
         agent_name = config.pop("agent", "QNetwork")
         agent_cls = {
-            "QNetwork": QNetwork,
+            "QNetwork": DiscreteQNetwork,
             "DuelingQNetwork": DuelingQNetwork,
-            "ConvQNetwork": ConvQNetwork,
         }[agent_name]
         agent_kwargs = config.pop("agent_kwargs", {})
-        activation = agent_kwargs.pop("activation", "relu")
+        activation = agent_kwargs.pop("activation", "swish")
         agent_kwargs["activation"] = getattr(nn, activation)
 
         action_dim = env.action_space(env_params).n
-        agent = agent_cls(action_dim, **agent_kwargs)
+        agent = EpsilonGreedyPolicy(agent_cls)(
+            hidden_layer_sizes=(64, 64), action_dim=action_dim, **agent_kwargs
+        )
 
-        eval_callback = make_evaluate(env, env_params, 200)
+        eval_callback = make_evaluate(DQN.make_act, env, env_params, 200)
         return cls(
             env_params=env_params,
             agent=agent,
@@ -80,89 +87,3 @@ class DQNConfig(struct.PyTreeNode):
             eval_callback=eval_callback,
             **config,
         )
-
-
-class QNetwork(nn.Module):
-    action_dim: int
-    activation: Callable = nn.tanh
-
-    @nn.compact
-    def __call__(self, x):
-        x = x.reshape((x.shape[0], -1))
-        x = nn.Dense(64)(x)
-        x = self.activation(x)
-        x = nn.Dense(64)(x)
-        x = self.activation(x)
-        x = nn.Dense(self.action_dim)(x)
-        return x
-
-    def act(self, obs, rng, epsilon=0):
-        q_values = self(obs)
-        action_dist = distrax.EpsilonGreedy(q_values, epsilon)
-        action = action_dist.sample(seed=rng)
-        return action
-
-    def q_of(self, obs, action):
-        q_values = self(obs)
-        return jnp.take_along_axis(q_values, action[:, None], axis=1).squeeze(axis=1)
-
-
-class DuelingQNetwork(nn.Module):
-    action_dim: int
-    activation: Callable = nn.tanh
-
-    def setup(self):
-        self.encoder = [nn.Dense(64), nn.Dense(64)]
-        self.value_ = nn.Dense(1)
-        self.advantage_ = nn.Dense(self.action_dim)
-
-    def encode(self, x):
-        x = x.reshape((x.shape[0], -1))
-        for layer in self.encoder:
-            x = self.activation(layer(x))
-        return x
-
-    def value(self, x_encoded):
-        return self.value_(x_encoded)
-
-    def advantage(self, x_encoded):
-        advantage = self.advantage_(x_encoded)
-        advantage = advantage - jnp.mean(advantage, axis=-1, keepdims=True)
-        return advantage
-
-    def __call__(self, x):
-        x_encoded = self.encode(x)
-        value = self.value(x_encoded)
-        advantage = self.advantage(x_encoded)
-        return value + advantage
-
-    def act(self, obs, rng, epsilon=0):
-        q_values = self(obs)
-        action_dist = distrax.EpsilonGreedy(q_values, epsilon)
-        action = action_dist.sample(seed=rng)
-        return action
-
-    def q_of(self, obs, action):
-        q_values = self(obs)
-        return jnp.take_along_axis(q_values, action[:, None], axis=1).squeeze(axis=1)
-
-
-class ConvQNetwork(nn.Module):
-    action_dim: int
-    activation: Callable = nn.relu
-
-    @nn.compact
-    def __call__(self, x):
-        x = nn.Conv(16, (3, 3))(x)
-        x = self.activation(x)
-        x = x.reshape((x.shape[0], -1))
-        x = nn.Dense(128)(x)
-        x = self.activation(x)
-        x = nn.Dense(self.action_dim)(x)
-        return x
-
-    def act(self, obs, rng, epsilon=0):
-        q_values = self(obs)
-        action_dist = distrax.EpsilonGreedy(q_values, epsilon)
-        action = action_dist.sample(seed=rng)
-        return action

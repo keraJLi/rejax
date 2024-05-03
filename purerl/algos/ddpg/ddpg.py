@@ -115,8 +115,8 @@ class DDPG(Algorithm):
 
         # Collect transitions
         uniform = jnp.logical_not(start_training)
-        ts, batch = cls.collect_transitions(config, ts, uniform=uniform)
-        ts = ts.replace(replay_buffer=ts.replay_buffer.extend(batch))
+        ts, transitions = cls.collect_transitions(config, ts, uniform=uniform)
+        ts = ts.replace(replay_buffer=ts.replay_buffer.extend(transitions))
 
         def update_iteration(ts):
             # Sample minibatch

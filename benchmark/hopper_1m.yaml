@@ -57,25 +57,26 @@ ddpg:
   max_grad_norm: 1
   exploration_noise: 0.2
 
-# td3:
-#   env: brax/hopper
-#   env_kwargs:
-#     backend: positional
-#   actor_kwargs:
-#       activation: tanh
-#   critic_kwargs:
-#       activation: tanh
-#   buffer_size: 1_000_000
-#   fill_buffer: 8192
-#   batch_size: 512
-#   learning_rate: 0.00014524424253732564
-#   gradient_steps: 128
-#   total_timesteps: 1_000_000
-#   eval_freq: 32768
-#   gamma: 0.995
-#   tau: 0.98
-#   max_grad_norm: 1
-#   exploration_noise: 0.2
-#   target_noise: 0.2
-#   target_noise_clip: 0.5
-#   policy_delay: 2
+# tuned
+td3:
+  env: brax/hopper
+  actor_kwargs:
+    activation: tanh
+  critic_kwargs:
+    activation: tanh
+  num_envs: 128
+  buffer_size: 1_000_000
+  fill_buffer: 8192
+  batch_size: 256
+  learning_rate: 0.00018789279685460533
+  gradient_steps: 128
+  total_timesteps: 1_000_000
+  eval_freq: 262144
+  gamma: 0.995
+  tau: 0.95
+  max_grad_norm: 2
+  exploration_noise: 0.5
+  target_noise: 0.8
+  target_noise_clip: 0.5
+  policy_delay: 3
+  normalize_observations: true

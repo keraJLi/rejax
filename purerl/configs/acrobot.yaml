@@ -21,23 +21,23 @@ dqn:
   env: Acrobot-v1
   agent: DuelingQNetwork
   agent_kwargs:
-    activation: tanh
-  num_envs: 1
+    activation: swish
+  num_envs: 10
   buffer_size: 50_000
-  fill_buffer: 10_000
+  fill_buffer: 5_000
   batch_size: 100
   max_grad_norm: 10
-  learning_rate: 0.0005
-  gradient_steps: 1
-  total_timesteps: 250_000
-  eval_freq: 2500
+  learning_rate: 0.001
+  gradient_steps: 5
+  total_timesteps: 100_000
+  eval_freq: 2_500
   target_update_freq: 200
   eps_start: 1
   eps_end: 0.05
   exploration_fraction: 0.5
-  gamma: 1.0
+  gamma: 0.99
   ddqn: true
-  normalize_observations: true
+  normalize_observations: false
 
 sac:
   env: Acrobot-v1

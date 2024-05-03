@@ -77,21 +77,24 @@ class DDPGConfig(struct.PyTreeNode):
 
 
 class MLPQFunction(nn.Module):
-    activation: Callable = nn.relu
+    hidden_layer_sizes: Tuple[int]
+    activation: Callable
 
     @nn.compact
     def __call__(self, obs, action):
-        seq = nn.Sequential(
-            [nn.Dense(64), self.activation, nn.Dense(64), self.activation, nn.Dense(1)]
-        )
-        q = seq(jnp.concatenate([obs.reshape(obs.shape[0], -1), action], axis=-1))
+        x = jnp.concatenate([obs.reshape(obs.shape[0], -1), action], axis=-1)
+        for size in self.hidden_layer_sizes:
+            x = nn.Dense(size)(x)
+            x = self.activation(x)
+        q = nn.Dense(1)(x)
         return jnp.squeeze(q, axis=-1)
 
 
 class DDPGActor(nn.Module):
     action_dim: int
     action_range: Tuple[float, float]
-    activation: Callable = nn.relu
+    hidden_layer_sizes: Tuple[int]
+    activation: Callable
 
     @property
     def action_loc(self):
@@ -103,10 +106,9 @@ class DDPGActor(nn.Module):
 
     @nn.compact
     def __call__(self, x):
-        x = nn.Dense(64)(x)
-        x = self.activation(x)
-        x = nn.Dense(64)(x)
-        x = self.activation(x)
+        for size in self.hidden_layer_sizes:
+            x = nn.Dense(size)(x)
+            x = self.activation(x)
         x = nn.Dense(self.action_dim)(x)
         x = jnp.tanh(x)
 
@@ -121,13 +123,14 @@ class DDPGActor(nn.Module):
 class DDPGAgent(nn.Module):
     action_dim: int
     action_range: Tuple[float, float]
+    hidden_layer_sizes: Tuple[int] = (64, 64)
     activation: Callable = nn.relu
 
     def setup(self):
         self.actor = DDPGActor(
-            self.action_dim, self.action_range, activation=self.activation
+            self.action_dim, self.action_range, self.hidden_layer_sizes, self.activation
         )
-        self.q = MLPQFunction(activation=self.activation)
+        self.q = MLPQFunction(self.hidden_layer_sizes, self.activation)
 
     def __call__(self, obs):
         action = self.actor(obs)
