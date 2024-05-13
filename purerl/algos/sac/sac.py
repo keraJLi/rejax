@@ -72,7 +72,8 @@ class SAC(Algorithm):
             )
         critic_ts = TrainState.create(apply_fn=(), params=critic_params, tx=tx)
 
-        alpha_ts = TrainState.create(apply_fn=(), params=jnp.array(0.0), tx=tx)
+        alpha_params = FrozenDict({"log_alpha": jnp.array(0.0)})
+        alpha_ts = TrainState.create(apply_fn=(), params=alpha_params, tx=tx)
 
         # Initialize environment
         rng, rng_reset = jax.random.split(rng)
@@ -228,7 +229,7 @@ class SAC(Algorithm):
     @classmethod
     def udpate_actor(cls, config, ts, mb):
         ts, rng = ts.get_rng()
-        alpha = jnp.exp(ts.alpha_ts.params)
+        alpha = jnp.exp(ts.alpha_ts.params["log_alpha"])
 
         def actor_loss_fn(params):
             if config.discrete:
@@ -257,7 +258,7 @@ class SAC(Algorithm):
     @classmethod
     def update_critic(cls, config, ts, mb):
         ts, rng = ts.get_rng()
-        alpha = jnp.exp(ts.alpha_ts.params)
+        alpha = jnp.exp(ts.alpha_ts.params["log_alpha"])
 
         def critic_loss_fn(params):
             # Calculate target without gradient wrt `params``
@@ -300,7 +301,8 @@ class SAC(Algorithm):
 
     @classmethod
     def update_alpha(cls, config, ts, logprob):
-        def alpha_loss_fn(log_alpha, logprob):
+        def alpha_loss_fn(params, logprob):
+            log_alpha = params["log_alpha"]
             loss_alpha = -log_alpha * (logprob + config.target_entropy)
             if config.discrete:
                 loss_alpha = jnp.sum(jnp.exp(logprob) * loss_alpha, axis=1)
