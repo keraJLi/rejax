@@ -8,25 +8,14 @@ the update of PPO to be the one from "Discovered Policy Optimisation" by Chris L
 import jax
 from jax import numpy as jnp
 
-from purerl.algos import PPO, PPOConfig
+from purerl import PPO, PPOConfig
 
 
 class DPO(PPO):
     @classmethod
-    def update(cls, config, ts, batch):
-        def v_loss_fn(params):
-            # Standard value loss
-            value = config.agent.apply(params, batch.trajectories.obs, method="value")
-            value_pred_clipped = batch.trajectories.value + (
-                value - batch.trajectories.value
-            ).clip(-config.clip_eps, config.clip_eps)
-            value_losses = jnp.square(value - batch.targets)
-            value_losses_clipped = jnp.square(value_pred_clipped - batch.targets)
-            value_loss = 0.5 * jnp.maximum(value_losses, value_losses_clipped).mean()
-            return value_loss
-
-        def pi_loss_fn(params):
-            log_prob, entropy = config.agent.apply(
+    def update_actor(cls, config, ts, batch):
+        def actor_loss_fn(params):
+            log_prob, entropy = config.actor.apply(
                 params,
                 batch.trajectories.obs,
                 batch.trajectories.action,
@@ -51,29 +40,23 @@ class DPO(PPO):
             drift = jnp.where(advantages >= 0, drift1, drift2)
             pi_loss = -(ratio * advantages - drift).mean()
 
-            return entropy, pi_loss
+            return pi_loss - config.ent_coef * entropy
 
-        def loss_fn(params):
-            v_loss = v_loss_fn(params)
-            entropy, pi_loss = pi_loss_fn(params)
-            return pi_loss + config.vf_coef * v_loss - config.ent_coef * entropy
-
-        grads = jax.grad(loss_fn)(ts.params)
-        ts = ts.apply_gradients(grads=grads)
-        return ts
+        grads = jax.grad(actor_loss_fn)(ts.actor_ts.params)
+        return ts.replace(actor_ts=ts.actor_ts.apply_gradients(grads=grads))
 
 
 config = PPOConfig.from_dict(
     {
         "env": "CartPole-v1",
-        "total_timesteps": 100_000,
+        "total_timesteps": 250_000,
         "eval_freq": 5000,
-        "num_envs": 10,
+        "num_envs": 20,
         "num_steps": 100,
         "num_epochs": 10,
         "num_minibatches": 10,
-        "max_grad_norm": 0.5,
-        "learning_rate": 0.0005,
+        "max_grad_norm": 10,
+        "learning_rate": 0.001,
         "gamma": 0.99,
         "gae_lambda": 0.95,
         "clip_eps": 0.2,
@@ -86,11 +69,10 @@ eval_callback = config.eval_callback
 
 
 def eval_with_print(c, ts, rng):
-    lengths, returns = eval_callback(c, ts, rng)
-    jax.debug.print("{}", returns.mean())
-    return lengths, returns
+    _, returns = eval_callback(c, ts, rng)
+    jax.debug.print("Step: {}, Mean return: {}", ts.global_step, returns.mean())
+    return ()
 
 
 config = config.replace(eval_callback=eval_with_print)
-
 DPO.train(config, jax.random.PRNGKey(0))

@@ -5,19 +5,22 @@ import jax
 import jax.numpy as jnp
 from matplotlib import pyplot as plt
 
-from purerl.algos import get_agent
+from purerl import get_algo
 
 
 def main(algo_str, config, seed_id, num_seeds, time_fit):
-    train_fn, config_cls = get_agent(algo_str)
+    train_fn, config_cls = get_algo(algo_str)
     old_train_config = config_cls.from_dict(config)
 
     def eval_callback(config, ts, rng):
-        evaluation = old_train_config.eval_callback(config, ts, rng)
+        lengths, returns = old_train_config.eval_callback(config, ts, rng)
         jax.debug.print(
-            "Step {}, {}", ts.global_step, jax.tree_map(lambda x: x.mean(), evaluation)
+            "Step {}, Mean episode length: {}, Mean return: {}",
+            ts.global_step,
+            lengths.mean(),
+            returns.mean(),
         )
-        return evaluation
+        return lengths, returns
 
     train_config = old_train_config.replace(eval_callback=eval_callback)
 

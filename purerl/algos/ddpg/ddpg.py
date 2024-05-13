@@ -1,16 +1,16 @@
 from typing import Any
 
-import jax
 import chex
-import optax
+import jax
 import numpy as np
-from jax import numpy as jnp
+import optax
 from flax.core.frozen_dict import FrozenDict
 from flax.training.train_state import TrainState
+from jax import numpy as jnp
 
 from purerl.algos.algorithm import Algorithm
 from purerl.algos.buffers import Minibatch, ReplayBuffer
-from purerl.normalize import RMSState, update_rms, normalize_obs
+from purerl.normalize import RMSState, normalize_obs, update_rms
 
 
 class DDPGTrainState(TrainState):

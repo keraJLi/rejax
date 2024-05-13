@@ -1,14 +1,13 @@
 """
-This example demonstrates how to log to wandb during training.
+This example demonstrates how to log to use a custom network.
 """
-from typing import Callable
 
-import jax
 import distrax
-from jax import numpy as jnp
+import jax
 from flax import linen as nn
+from jax import numpy as jnp
 
-from purerl.algos import get_agent
+from purerl import DQN, DQNConfig
 from purerl.evaluate import make_evaluate
 
 
@@ -41,8 +40,7 @@ class ConvDuelingQNet(nn.Module):
         return action
 
 
-train_fn, config_cls = get_agent("dqn")
-config = config_cls.from_dict(
+config = DQNConfig.from_dict(
     {
         "env": "Freeway-MinAtar",
         "total_timesteps": 1_000_000,
@@ -63,7 +61,8 @@ config = config_cls.from_dict(
     }
 )
 
-evaluate = make_evaluate(config.env, config.env_params, 10)
+evaluate = make_evaluate(DQN.make_act, config.env, config.env_params, 10)
+
 
 def log_callback(config, train_state, rng):
     lengths, returns = evaluate(config, train_state, rng)
@@ -77,12 +76,13 @@ def log_callback(config, train_state, rng):
     )
     return lengths, returns
 
+
 action_dim = config.env.action_space(config.env_params).n
 conv_qnet = ConvDuelingQNet(action_dim)
 config = config.replace(eval_callback=log_callback, agent=conv_qnet)
 
 rng = jax.random.PRNGKey(0)
 print("Compiling...")
-compiled_train = jax.jit(train_fn).lower(config, rng).compile()
+compiled_train = jax.jit(DQN.train).lower(config, rng).compile()
 print("Training...")
 compiled_train(config, rng)

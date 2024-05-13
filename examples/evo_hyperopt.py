@@ -10,21 +10,20 @@ both over all sampled hyperparameter combinations, as well as several random see
 combination to reduce variance in our fitness estimate.
 """
 
-from time import time
 from functools import partial
+from time import time
 
 import jax
 from evosax import SNES
 
-from purerl.algos import get_agent
-
+from purerl import get_algo
 
 NUM_GENERATIONS = 10
 POPULATION_SIZE = 10
 EVAL_SEEDS = 10
 
 # Load SAC agent's train function and config
-train_fn, config_cls = get_agent("sac")
+train_fn, config_cls = get_algo("sac")
 
 # Static parameters, cannot be vmapped (except target_entropy_ratio, which is unused)
 static_params = {
@@ -33,9 +32,9 @@ static_params = {
     "buffer_size": 2000,
     "fill_buffer": 1000,
     "batch_size": 256,
-    "eval_freq": 10_000,        # We only care about the final performance
-    "num_envs": 1,              # Matching the original SAC formulation
-    "gradient_steps": 1,        # Matching the original SAC formulation
+    "eval_freq": 10_000,  # We only care about the final performance
+    "num_envs": 1,  # Matching the original SAC formulation
+    "gradient_steps": 1,  # Matching the original SAC formulation
     "target_entropy_ratio": 0,  # unused
 }
 
@@ -72,6 +71,7 @@ es_params = strategy.default_params.replace(clip_min=1e-10, clip_max=1)
 state = strategy.initialize(rng, es_params, init_mean=optim_params)
 
 # Run a few generations of ES
+print(f"Running {NUM_GENERATIONS} generations with {POPULATION_SIZE} members each")
 for t in range(1, NUM_GENERATIONS + 1):
     start_time = time()
     rng, rng_gen, rng_eval = jax.random.split(rng, 3)

@@ -92,8 +92,7 @@ class SACConfig(struct.PyTreeNode):
 
         # Convert hidden layer sizes to tuple
         hidden_layer_sizes = agent_kwargs.pop("hidden_layer_sizes", (64, 64))
-        if hidden_layer_sizes is not None:
-            agent_kwargs["hidden_layer_sizes"] = tuple(hidden_layer_sizes)
+        agent_kwargs["hidden_layer_sizes"] = tuple(hidden_layer_sizes)
 
         if discrete:
             actor = DiscretePolicy(action_space.n, **agent_kwargs)

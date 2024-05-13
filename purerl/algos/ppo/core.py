@@ -70,16 +70,14 @@ class PPOConfig(struct.PyTreeNode):
 
         agent_kwargs = config.pop("agent_kwargs", {})
         activation = agent_kwargs.pop("activation", "swish")
-        if activation:
-            agent_kwargs["activation"] = getattr(nn, activation)
+        agent_kwargs["activation"] = getattr(nn, activation)
 
         # Convert hidden layer sizes to tuple
         hidden_layer_sizes = agent_kwargs.pop("hidden_layer_sizes", (64, 64))
-        if hidden_layer_sizes is not None:
-            agent_kwargs["hidden_layer_sizes"] = tuple(hidden_layer_sizes)
+        agent_kwargs["hidden_layer_sizes"] = tuple(hidden_layer_sizes)
 
         if discrete:
-            actor = DiscretePolicy(action_space.n, hidden_layer_sizes, **agent_kwargs)
+            actor = DiscretePolicy(action_space.n, **agent_kwargs)
         else:
             actor = GaussianPolicy(
                 np.prod(action_space.shape),
@@ -87,7 +85,7 @@ class PPOConfig(struct.PyTreeNode):
                 hidden_layer_sizes,
                 **agent_kwargs,
             )
-        critic = VNetwork(hidden_layer_sizes, **agent_kwargs)
+        critic = VNetwork(**agent_kwargs)
 
         evaluate = make_evaluate(PPO.make_act, env, env_params, 200)
 

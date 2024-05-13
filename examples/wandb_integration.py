@@ -2,13 +2,12 @@
 This example demonstrates how to log to wandb during training.
 """
 import jax
-import wandb
 from jax import numpy as jnp
 
-from purerl.algos import get_agent
+import wandb
+from purerl import get_algo
 
 CONFIG = {
-    # "env": "CartPole-v1",
     "env": "brax/ant",
     "env_kwargs": {"backend": "positional"},
     "agent_kwargs": {"activation": "relu"},
@@ -27,10 +26,9 @@ CONFIG = {
     "ent_coef": 0.01,
 }
 
-# wandb.init(project="my-awesome-project", config=CONFIG)
-wandb.init(project="purerl-test", entity="kerajli", config=CONFIG)
+wandb.init(project="my-awesome-project", config=CONFIG)
 
-train_fn, config_cls = get_agent("ppo")
+train_fn, config_cls = get_algo("ppo")
 config = config_cls.from_dict(CONFIG)
 eval_callback = config.eval_callback
 
@@ -39,7 +37,9 @@ def wandb_callback(config, train_state, rng):
     lengths, returns = eval_callback(config, train_state, rng)
 
     def log(step, data):
-        step = step.item()  # io_callback returns np.array, which wandb does not like
+        # io_callback returns np.array, which wandb does not like.
+        # In jax 0.4.27, this becomes a jax array, should check when upgrading...
+        step = step.item()
         wandb.log(data, step=step)
 
     jax.experimental.io_callback(

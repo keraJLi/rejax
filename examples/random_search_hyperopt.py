@@ -6,13 +6,12 @@ search.
 import jax
 from jax import numpy as jnp
 
-from purerl.algos import get_agent
-
+from purerl import get_algo
 
 # How many random configurations should we try?
 POPULATION_SIZE = 10
 
-train_fn, config_cls = get_agent("td3")
+train_fn, config_cls = get_algo("td3")
 
 # Static parameters, cannot be vmapped
 static_params = {
@@ -49,7 +48,7 @@ def exp_uniform(rng, minval, maxval):
 
 
 def sample_config_dict(rng):
-    """ Samples a dictionary of vmappable hyperparameters. """
+    """Samples a dictionary of vmappable hyperparameters."""
     rngs = jax.random.split(rng, 6)
     return {
         "learning_rate": log_uniform(rngs[0], minval=0.0001, maxval=0.01),
@@ -60,6 +59,7 @@ def sample_config_dict(rng):
         "target_noise_clip": jax.random.uniform(rngs[5], minval=0.0, maxval=0.5),
     }
 
+
 # Vmap to create a population of configurations
 global_rngs = jax.random.split(jax.random.PRNGKey(0), POPULATION_SIZE)
 config_dicts = jax.vmap(sample_config_dict)(global_rngs)
@@ -67,6 +67,7 @@ configs = jax.vmap(lambda c: config_cls.from_dict({**static_params, **c}))(confi
 
 # Vmap training to parallelize the evaluation of return, which was originally of shape
 # (POPULATION_SIZE, 1, num_eval_seeds), where num_eval_seeds = 200 by default
+print(f"Starting to train {POPULATION_SIZE} agents...")
 _, (_, returns) = jax.vmap(train_fn)(configs, global_rngs)
 returns = returns[:, 0].mean(axis=1)
 
