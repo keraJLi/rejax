@@ -89,7 +89,6 @@ class PPOConfig(struct.PyTreeNode):
             actor = GaussianPolicy(
                 np.prod(action_space.shape),
                 (action_space.low, action_space.high),
-                hidden_layer_sizes,
                 **agent_kwargs,
             )
         critic = VNetwork(**agent_kwargs)
