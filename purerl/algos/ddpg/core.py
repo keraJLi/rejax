@@ -1,8 +1,10 @@
+from typing import Any, Callable, Tuple
+
 import chex
-from jax import numpy as jnp
-from flax import struct, linen as nn
-from typing import Callable, Tuple, Any
+from flax import linen as nn
+from flax import struct
 from gymnax.environments.environment import Environment
+from jax import numpy as jnp
 
 
 class DDPGConfig(struct.PyTreeNode):
@@ -37,12 +39,21 @@ class DDPGConfig(struct.PyTreeNode):
         return self.env.action_space(self.env_params).high
 
     @classmethod
+    def create(cls, **kwargs):
+        """Create a config object from keyword arguments."""
+        return cls.from_dict(kwargs)
+
+    @classmethod
     def from_dict(cls, config):
+        """Create a config object from a dictionary. Exists mainly for backwards
+        compatibility and will be deprecated in the future."""
+        from copy import deepcopy
+
         import gymnax
         import numpy as np
-        from copy import deepcopy
-        from purerl.evaluate import make_evaluate
+
         from purerl.brax2gymnax import Brax2GymnaxEnv
+        from purerl.evaluate import make_evaluate
 
         config = deepcopy(config)  # Because we're popping from it
 

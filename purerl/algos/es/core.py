@@ -1,13 +1,15 @@
-import jax
-import chex
-from jax import numpy as jnp
-from evosax import Strategies
-from flax import struct, linen as nn
 from typing import Any, Callable, Sequence
-from gymnax.environments.environment import Environment
 
+import chex
+import jax
+from evosax import Strategies
+from flax import linen as nn
+from flax import struct
+from gymnax.environments.environment import Environment
+from jax import numpy as jnp
 
 # TODO: Support for custom evo_params
+
 
 class ESConfig(struct.PyTreeNode):
     # Non-static parameters
@@ -29,12 +31,21 @@ class ESConfig(struct.PyTreeNode):
         return (self.num_envs * self.num_steps) // self.num_minibatches
 
     @classmethod
+    def create(cls, **kwargs):
+        """Create a config object from keyword arguments."""
+        return cls.from_dict(kwargs)
+
+    @classmethod
     def from_dict(cls, config):
+        """Create a config object from a dictionary. Exists mainly for backwards
+        compatibility and will be deprecated in the future."""
+        from copy import deepcopy
+
         import gymnax
         import numpy as np
-        from copy import deepcopy
-        from purerl.evaluate import make_evaluate
+
         from purerl.brax2gymnax import Brax2GymnaxEnv
+        from purerl.evaluate import make_evaluate
 
         config = deepcopy(config)  # Because we're popping from it
 

@@ -13,5 +13,7 @@ setup(
         "distrax",
         "optax",
         "numpy",
+        "brax",
+        "evosax",
     ],
 )

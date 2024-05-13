@@ -54,7 +54,14 @@ class PPOConfig(struct.PyTreeNode):
         return self.actor
 
     @classmethod
+    def create(cls, **kwargs):
+        """Create a config object from keyword arguments."""
+        return cls.from_dict(kwargs)
+
+    @classmethod
     def from_dict(cls, config):
+        """Create a config object from a dictionary. Exists mainly for backwards
+        compatibility and will be deprecated in the future."""
         config = deepcopy(config)  # Because we're popping from it
 
         # Get env id and convert to gymnax environment and parameters
