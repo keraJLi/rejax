@@ -1,5 +1,0 @@
-jax
-flax
-optax
-distrax
-numpy
