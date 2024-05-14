@@ -6,17 +6,27 @@ from purerl.algos.sac import SAC, SACConfig
 from purerl.algos.td3 import TD3, TD3Config
 
 _algos = {
-    "ppo": (PPO.train, PPOConfig),
-    "dqn": (DQN.train, DQNConfig),
-    "sac": (SAC.train, SACConfig),
-    "ddpg": (DDPG.train, DDPGConfig),
-    "td3": (TD3.train, TD3Config),
-    "es": (train_es, ESConfig),
+    "ppo": (PPO, PPOConfig),
+    "dqn": (DQN, DQNConfig),
+    "sac": (SAC, SACConfig),
+    "ddpg": (DDPG, DDPGConfig),
+    "td3": (TD3, TD3Config),
+    # "es": (train_es, ESConfig),
 }
 
 
-def get_algo(agent_str):
-    return _algos[agent_str]
+def get_agent(agent_str):
+    """Gets a pair of `(train_fn, config_cls)`. Will be deprecated in the future, exists
+    mainly for backwards compatibility."""
+    if agent_str == "es":
+        return train_es, ESConfig
+    algo_cls, config_cls = _algos[agent_str]
+    return algo_cls.train, config_cls
+
+
+def get_algo(algo):
+    """Get a pair of `(algo_cls, config_cls)` for a given algorithm."""
+    return _algos[algo]
 
 
 __all__ = [
