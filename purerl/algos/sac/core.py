@@ -37,7 +37,7 @@ class SACConfig(struct.PyTreeNode):
     # Static parameters
     total_timesteps: int            = struct.field(pytree_node=False, default=100_000)
     eval_freq: int                  = struct.field(pytree_node=False, default=10_000)
-    num_envs: int                   = struct.field(pytree_node=False, default=100)
+    num_envs: int                   = struct.field(pytree_node=False, default=1)
     buffer_size: int                = struct.field(pytree_node=False, default=100_000)
     fill_buffer: int                = struct.field(pytree_node=False, default=10_000)
     batch_size: int                 = struct.field(pytree_node=False, default=256)

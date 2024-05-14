@@ -1,15 +1,9 @@
-from purerl.algos.ddpg.core import DDPGConfig
-from purerl.algos.ddpg.ddpg import DDPG
-from purerl.algos.dqn.core import DQNConfig
-from purerl.algos.dqn.dqn import DQN
-from purerl.algos.es.core import ESConfig
-from purerl.algos.es.es import train as train_es
-from purerl.algos.ppo.core import PPOConfig
-from purerl.algos.ppo.ppo import PPO
-from purerl.algos.sac.core import SACConfig
-from purerl.algos.sac.sac import SAC
-from purerl.algos.td3.core import TD3Config
-from purerl.algos.td3.td3 import TD3
+from purerl.algos.ddpg import DDPG, DDPGConfig
+from purerl.algos.dqn import DQN, DQNConfig
+from purerl.algos.es import ESConfig, train_es
+from purerl.algos.ppo import PPO, PPOConfig
+from purerl.algos.sac import SAC, SACConfig
+from purerl.algos.td3 import TD3, TD3Config
 
 _algos = {
     "ppo": (PPO.train, PPOConfig),
@@ -22,9 +16,7 @@ _algos = {
 
 
 def get_algo(agent_str):
-    train_fn, config_cls = _algos[agent_str]
-    rng_only_train_fn = lambda config, rng: train_fn(config, rng=rng)
-    return rng_only_train_fn, config_cls
+    return _algos[agent_str]
 
 
 __all__ = [

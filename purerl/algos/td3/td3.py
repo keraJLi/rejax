@@ -15,7 +15,7 @@ from purerl.normalize import RMSState, normalize_obs, update_rms
 
 # Algorithm outline
 # num_eval_iterations = total_timesteps / eval_freq
-# num_train_iterations = eval_freq / num_envs
+# num_train_iterations = eval_freq / (num_envs * policy_delay)
 # for _ in range(num_eval_iterations):
 #   for _ in range(num_train_iterations):
 #     for _ in range(policy_delay):
