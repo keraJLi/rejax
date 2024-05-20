@@ -1,56 +1,135 @@
-# pureRL - Fully vectorizable reinforcement learning algorithms in jax!
+<div style="display: flex; align-items: center">
+<div style="flex-shrink: 0.5; min-width: 30px; max-width: 150px; aspect-ratio: 1; margin-right: 15px">
+  <img src="img/logo.png" width="150" height="150" align="left"></img>
+</div>
+<div>
+  <h1>
+    PureRL
+    <br>
+    <span style="font-size: large">Fully Vectorizable Reinforcement Learning Algorithms in Jax!</span>
+    <br>
+    <a href="https://colab.research.google.com/github/kerajli/purerl/blob/master/examples/purerl_tour.ipynb">
+      <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+    </a>
+    <a href="https://github.com/psf/black">
+      <img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black">
+    </a>
+    <a href="https://opensource.org/licenses/Apache-2.0">
+      <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0">
+    </a>
+  </h1>
+  </div>
+</div>
+<br>
 
-## Vectorize training for incledible speedups!
-`vmap` over initial seeds or hyperparameters to train a whole batch of agents in parallel! 
+If you're new to <strong>pureRL</strong> and want to learn more about it,
+<h3 align="center">
+<a href="https://colab.research.google.com/github/kerajli/purerl/blob/master/examples/purerl_tour.ipynb" style="margin-right: 15px">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
+📸 Take a tour
+</h3>
+
+Here's what you can expect:
+
+## ⚡ Vectorize training for incredible speedups!
+- Use `jax.jit` on the whole train function to run training exclusively on your GPU!
+- Use `jax.vmap` and `jax.pmap` on the initial seed or hyperparameters to train a whole batch of agents in parallel! 
 
 ```python
 from purerl.algos import get_agent
-from mle_logging import load_config
-
-# Load hyperparameter configuration as dict
-config_dict = load_config("purerl/configs/cartpole.yaml")
 
 # Get train function and initialize config for training
 train_fn, config_cls = get_agent("sac")
-train_config = config_cls.from_dict(config_dict)
+train_config = config_cls.make(env="CartPole-v1", learning_rate=0.001)
+
+# Jit the training function
+jitted_train_fn = jax.jit(train_fn)
 
 # Vmap training function over 300 initial seeds
-keys = jax.random.split(jax.random.PRNGKey(0), 300)
-vmap_train = jax.vmap(jax.jit(train_fn), in_axes=(None, 0))
+vmapped_train_fn = jax.vmap(jitted_train_fn, in_axes=(None, 0))
 
 # Train 300 agents!
-train_state, evaluation = vmap_train(train_config, keys)
+keys = jax.random.split(jax.random.PRNGKey(0), 300)
+train_state, evaluation = vmapped_train_fn(train_config, keys)
 ```
 
-![Speedup over cleanRL](img/speedup_brax.svg)
-![Speedup over cleanRL](img/speedup_minatar.svg)
+![Speedup over cleanRL on hopper](img/speedup_brax.png)
+![Speedup over cleanRL on breakout](img/speedup_minatar.png)
 
 Benchmark on an A100 80G and a Intel Xeon 4215R CPU. Note that the hyperparameters were set to the default values of cleanRL, including buffer sizes. Shrinking the buffers can yield additional speedups due to better caching, and enables training of even more agents in parallel.
 
-## Algorithms
-| Algorithm | Discrete | Continuous        | Notes                     |
-|-----------|----------|-------------------|---------------------------|
-| PPO       | ✔        | ✔                 |                           |
-| SAC       | ✔        | ✔                 | discrete version as in [Christodoulou, 2019](https://arxiv.org/abs/1910.07207)                          |
-| DQN       | ✔        |                   | incl. DDQN, Dueling DQN   |
-| DDPG      |          | ✔                 |                           |
-| TD3       |          | ✔                 |                           |
+## 🤖 Implemented algorithms
+| Algorithm | Discrete | Continuous | Notes                                                                          |
+| --------- | -------- | ---------- | ------------------------------------------------------------------------------ |
+| PPO       | ✔        | ✔          |                                                                                |
+| SAC       | ✔        | ✔          | discrete version as in [Christodoulou, 2019](https://arxiv.org/abs/1910.07207) |
+| DQN       | ✔        |            | incl. DDQN, Dueling DQN                                                        |
+| DDPG      |          | ✔          |                                                                                |
+| TD3       |          | ✔          |                                                                                |
 
 
-## Built for researchers
+## 🛠 Easily extend and modify algorithms
 The implementations focus on clarity! 
 Easily modify the implemented algorithms by overwriting isolated parts, such as the loss function, trajectory generation or parameter updates.
-Algorithms are implemented as stateless classes containing only class methods. This allows for an explicit differentiation between
+For example, easily turn DQN into DDQN by writing
+```python
+class DoubleDQN(DQN):
+    @classmethod
+    def update(cls, config, state, minibatch):
+        # Calculate DDQN-specific targets
+        targets = ddqn_targets(config, state, minibatch)
 
-- **Instructions** that make up the algorithm (stateless class)
-- **Configuration** including environment, policy networks, hyperparameters, ... (flax.PyTreeNode, partly static)
-- **Train state** including the current environment state, network parameters, global step, ... (flax.PyTreeNode)
+        # The loss function predicts Q-values and returns MSBE
+        def loss_fn(params):
+            ...
+            return jnp.mean((targets - q_values) ** 2)
 
-All algorithms implement `algo.train(config, rng)`, where `config` is a PyTreeNode. This function can be jitted and vmapped over in both inputs. For a quick start, you can get the train function and config class from `get_agent(algorithm: str) -> Tuple[Callable, PyTreeNode]`, and use `config.from_dict` to load a dictionary config.
+        # Calculate gradients
+        grads = jax.grad(loss_fn)(state.q_ts.params)
 
-The exact API is likely to change to allow for more flexibility, but I aim to keep it at least as simple as this.
+        # Update train state
+        q_ts = state.q_ts.apply_gradients(grads=grads)
+        state = state.replace(q_ts=q_ts)
+        return state
+```
 
-## Flexible callbacks
-The config of all algorithms includes a callback function `callback(config, train_state, rng) -> PyTree`, which is called every `eval_freq` training steps with the config and current train state. The output of the callback will be aggregated over training and returned by the train function. The default callback runs a number of episodes in the training environment and returns their length and episodic return, such that the train function returns a training curve.
+## 🔙 Flexible callbacks
+Using callbacks, you can run logging to the console, disk, wandb, and much more. Even when the whole train function is jitted! For example, run a jax.experimental.io_callback regular intervals during training, or print the current policies mean return:
 
-Importantly, this function is jit-compiled along with the rest of the algorithm. However, you can use one of Jax' callbacks such as `jax.experimental.io_callback` to implement model checkpoining, logging to wandb, and more, all while maintaining the advantages of a completely jittable training function.
+```python
+def print_callback(config, state, rng):
+    policy = make_act(config, state)         # Get current policy
+    episode_returns = evaluate(policy, ...)  # Evaluate it
+    jax.debug.print(                         # Print results
+        "Step: {}. Mean return: {}",
+        state.global_step,
+        episode_returns.mean(),
+    )
+    return ()  # Must return PyTree (None is not a PyTree)
+
+config = config.replace(eval_callback=print_callback)
+```
+
+Callbacks have the signature `callback(config, train_state, rng) -> PyTree`, which is called every `eval_freq` training steps with the config and current train state. The output of the callback will be aggregated over training and returned by the train function. The default callback runs a number of episodes in the training environment and returns their length and episodic return, such that the train function returns a training curve.
+
+Importantly, this function is jit-compiled along with the rest of the algorithm. However, you can use one of Jax's callbacks such as `jax.experimental.io_callback` to implement model checkpoining, logging to wandb, and more, all while maintaining the advantages of a completely jittable training function.
+
+## 💞 Alternatives in end-to-end GPU training
+Libraries:
+- [Brax](https://github.com/google/brax/) along with several environments, brax implements PPO and SAC within their environment interface
+
+Single file implementations:
+- [PureJaxRL](https://github.com/luchris429/purejaxrl/) implements PPO, recurrent PPO and DQN
+- [Stoix](https://github.com/EdanToledo/Stoix) features DQN, DDPG, TD3, SAC, PPO, as well as popular extensions and more
+
+## ✍ Cite us!
+```bibtex
+@misc{purerl, 
+  title={pureRL}, 
+  url={https://github.com/keraJLi/pureRL}, 
+  journal={keraJLi/pureRL}, 
+  author={Liesen, Jarek and Lu, Chris and Lange, Robert}, 
+  year={2024}
+} 
+```
