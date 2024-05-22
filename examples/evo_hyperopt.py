@@ -16,7 +16,7 @@ from time import time
 import jax
 from evosax import SNES
 
-from purerl import get_algo
+from fastrl import get_algo
 
 NUM_GENERATIONS = 10
 POPULATION_SIZE = 10

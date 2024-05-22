@@ -2,10 +2,10 @@
 This example demonstrates how to log to wandb during training.
 """
 import jax
+import wandb
 from jax import numpy as jnp
 
-import wandb
-from purerl import get_algo
+from fastrl import get_algo
 
 CONFIG = {
     "env": "brax/ant",

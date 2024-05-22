@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 from gymnax.environments import environment
 
-from purerl.normalize import normalize_obs
+from fastrl.normalize import normalize_obs
 
 
 class EvalState(NamedTuple):

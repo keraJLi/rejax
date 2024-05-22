@@ -9,8 +9,8 @@ from flax.struct import PyTreeNode
 from flax.training.train_state import TrainState
 from jax import numpy as jnp
 
-from purerl.algos.algorithm import Algorithm
-from purerl.normalize import RMSState, normalize_obs, update_and_normalize
+from fastrl.algos.algorithm import Algorithm
+from fastrl.normalize import RMSState, normalize_obs, update_and_normalize
 
 # TODO: fix step ratios and so on by implementing an eval tracker
 

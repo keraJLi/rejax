@@ -1,9 +1,9 @@
-from purerl.algos.ddpg import DDPG, DDPGConfig
-from purerl.algos.dqn import DQN, DQNConfig
-from purerl.algos.es import ESConfig, train_es
-from purerl.algos.ppo import PPO, PPOConfig
-from purerl.algos.sac import SAC, SACConfig
-from purerl.algos.td3 import TD3, TD3Config
+from fastrl.algos.ddpg import DDPG, DDPGConfig
+from fastrl.algos.dqn import DQN, DQNConfig
+from fastrl.algos.es import ESConfig, train_es
+from fastrl.algos.ppo import PPO, PPOConfig
+from fastrl.algos.sac import SAC, SACConfig
+from fastrl.algos.td3 import TD3, TD3Config
 
 _algos = {
     "ppo": (PPO, PPOConfig),

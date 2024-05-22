@@ -9,9 +9,9 @@ from flax.struct import PyTreeNode
 from flax.training.train_state import TrainState
 from jax import numpy as jnp
 
-from purerl.algos.algorithm import Algorithm
-from purerl.algos.buffers import Minibatch, ReplayBuffer
-from purerl.normalize import RMSState, normalize_obs, update_rms
+from fastrl.algos.algorithm import Algorithm
+from fastrl.algos.buffers import Minibatch, ReplayBuffer
+from fastrl.normalize import RMSState, normalize_obs, update_rms
 
 
 class DQNTrainState(PyTreeNode):

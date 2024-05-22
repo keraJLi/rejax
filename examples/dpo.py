@@ -8,7 +8,7 @@ the update of PPO to be the one from "Discovered Policy Optimisation" by Chris L
 import jax
 from jax import numpy as jnp
 
-from purerl import PPO, PPOConfig
+from fastrl import PPO, PPOConfig
 
 
 class DPO(PPO):

@@ -1,10 +1,11 @@
-import jax
 import chex
+import jax
+import jax.numpy as jnp
 import numpy as np
 from flax import struct
-import jax.numpy as jnp
 from flax.core import FrozenDict
-from purerl.evaluate import evaluate as evaluate_act
+
+from fastrl.evaluate import evaluate as evaluate_act
 
 
 def execute_eval_callback(config, evo_state, rng):

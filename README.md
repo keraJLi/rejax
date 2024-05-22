@@ -4,11 +4,11 @@
 </div>
 <div>
   <h1>
-    PureRL
+    FastRL
     <br>
     <span style="font-size: large">Fully Vectorizable Reinforcement Learning Algorithms in Jax!</span>
     <br>
-    <a href="https://colab.research.google.com/github/kerajli/purerl/blob/master/examples/purerl_tour.ipynb">
+    <a href="https://colab.research.google.com/">
       <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
     </a>
     <a href="https://github.com/psf/black">
@@ -22,9 +22,9 @@
 </div>
 <br>
 
-If you're new to <strong>pureRL</strong> and want to learn more about it,
+If you're new to <strong>FastRL</strong> and want to learn more about it,
 <h3 align="center">
-<a href="https://colab.research.google.com/github/kerajli/purerl/blob/master/examples/purerl_tour.ipynb" style="margin-right: 15px">
+<a href="https://colab.research.google.com/" style="margin-right: 15px">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a>
 📸 Take a tour
@@ -37,7 +37,7 @@ Here's what you can expect:
 - Use `jax.vmap` and `jax.pmap` on the initial seed or hyperparameters to train a whole batch of agents in parallel! 
 
 ```python
-from purerl.algos import get_agent
+from fastrl.algos import get_agent
 
 # Get train function and initialize config for training
 train_fn, config_cls = get_agent("sac")
@@ -125,11 +125,11 @@ Single file implementations:
 
 ## ✍ Cite us!
 ```bibtex
-@misc{purerl, 
-  title={pureRL}, 
-  url={https://github.com/keraJLi/pureRL}, 
-  journal={keraJLi/pureRL}, 
-  author={Liesen, Jarek and Lu, Chris and Lange, Robert}, 
+@misc{..., 
+  title={...}, 
+  url={...}, 
+  journal={...}, 
+  author={...}, 
   year={2024}
 } 
 ```

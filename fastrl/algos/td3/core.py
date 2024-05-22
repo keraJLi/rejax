@@ -9,10 +9,10 @@ from flax import struct
 from gymnax.environments.environment import Environment
 from jax import numpy as jnp
 
-from purerl.algos.networks import DeterministicPolicy, QNetwork
-from purerl.algos.td3.td3 import TD3
-from purerl.brax2gymnax import Brax2GymnaxEnv
-from purerl.evaluate import make_evaluate
+from fastrl.algos.networks import DeterministicPolicy, QNetwork
+from fastrl.algos.td3.td3 import TD3
+from fastrl.brax2gymnax import Brax2GymnaxEnv
+from fastrl.evaluate import make_evaluate
 
 
 class TD3Config(struct.PyTreeNode):

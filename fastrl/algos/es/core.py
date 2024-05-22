@@ -44,8 +44,8 @@ class ESConfig(struct.PyTreeNode):
         import gymnax
         import numpy as np
 
-        from purerl.brax2gymnax import Brax2GymnaxEnv
-        from purerl.evaluate import make_evaluate
+        from fastrl.brax2gymnax import Brax2GymnaxEnv
+        from fastrl.evaluate import make_evaluate
 
         config = deepcopy(config)  # Because we're popping from it
 

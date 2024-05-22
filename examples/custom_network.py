@@ -7,8 +7,8 @@ import jax
 from flax import linen as nn
 from jax import numpy as jnp
 
-from purerl import DQN, DQNConfig
-from purerl.evaluate import make_evaluate
+from fastrl import DQN, DQNConfig
+from fastrl.evaluate import make_evaluate
 
 
 class ConvDuelingQNet(nn.Module):

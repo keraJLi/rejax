@@ -8,15 +8,15 @@ from flax import linen as nn
 from flax import struct
 from gymnax.environments.environment import Environment
 
-from purerl.algos.networks import (
+from fastrl.algos.networks import (
     DiscretePolicy,
     DiscreteQNetwork,
     QNetwork,
     SquashedGaussianPolicy,
 )
-from purerl.algos.sac.sac import SAC
-from purerl.brax2gymnax import Brax2GymnaxEnv
-from purerl.evaluate import make_evaluate
+from fastrl.algos.sac.sac import SAC
+from fastrl.brax2gymnax import Brax2GymnaxEnv
+from fastrl.evaluate import make_evaluate
 
 
 class SACConfig(struct.PyTreeNode):
