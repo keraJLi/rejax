@@ -1,7 +1,4 @@
 <div style="display: flex; align-items: center">
-<div style="flex-shrink: 0.5; min-width: 30px; max-width: 150px; aspect-ratio: 1; margin-right: 15px">
-  <img src="img/logo.png" width="150" height="150" align="left"></img>
-</div>
 <div>
   <h1>
     FastRL
