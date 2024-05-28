@@ -1,49 +1,35 @@
-from copy import deepcopy
-from typing import Any, Callable
-
 import chex
-import gymnax
 import numpy as np
-from flax import linen as nn
-from flax import struct
-from gymnax.environments.environment import Environment
 from jax import numpy as jnp
-
-from purerl.algos.networks import DeterministicPolicy, QNetwork
-from purerl.algos.td3.td3 import TD3
-from purerl.brax2gymnax import Brax2GymnaxEnv
-from purerl.evaluate import make_evaluate
+from typing import Any, Callable, Tuple
+from flax import struct, linen as nn
+from gymnax.environments.environment import Environment
 
 
 class TD3Config(struct.PyTreeNode):
-    # fmt: off
     # Non-static parameters
-    env: Environment                = struct.field(pytree_node=False)
-    env_params: Any                 = struct.field(pytree_node=True)
-    actor: nn.Module                = struct.field(pytree_node=False)
-    critic: nn.Module               = struct.field(pytree_node=False)
-    eval_callback: Callable         = struct.field(pytree_node=False)
-
-    learning_rate: chex.Scalar      = struct.field(pytree_node=True, default=0.001)
-    gamma: chex.Scalar              = struct.field(pytree_node=True, default=0.99)
-    tau: chex.Scalar                = struct.field(pytree_node=True, default=0.95)
-    exploration_noise: chex.Scalar  = struct.field(pytree_node=True, default=0.3)
-    target_noise: chex.Scalar       = struct.field(pytree_node=True, default=0.2)
-    target_noise_clip: chex.Scalar  = struct.field(pytree_node=True, default=0.5)
-    max_grad_norm: chex.Scalar      = struct.field(pytree_node=True, default=jnp.inf)
+    env_params: Any
+    gamma: chex.Scalar
+    tau: chex.Scalar
+    max_grad_norm: chex.Scalar
+    learning_rate: chex.Scalar
+    exploration_noise: chex.Scalar
+    target_noise: chex.Scalar
+    target_noise_clip: chex.Scalar
+    policy_delay: int
 
     # Static parameters
-    total_timesteps: int            = struct.field(pytree_node=False, default=10_000)
-    policy_delay: int               = struct.field(pytree_node=False, default=2)
-    eval_freq: int                  = struct.field(pytree_node=False, default=1_000)
-    num_envs: int                   = struct.field(pytree_node=False, default=1)
-    gradient_steps: int             = struct.field(pytree_node=False, default=1)
-    buffer_size: int                = struct.field(pytree_node=False, default=10_000)
-    fill_buffer: int                = struct.field(pytree_node=False, default=1_000)
-    batch_size: int                 = struct.field(pytree_node=False, default=100)
-    normalize_observations: bool    = struct.field(pytree_node=False, default=False)
-    skip_initial_evaluation: bool   = struct.field(pytree_node=False, default=False)
-    # fmt: on
+    total_timesteps: int = struct.field(pytree_node=False)
+    eval_freq: int = struct.field(pytree_node=False)
+    actor: nn.Module = struct.field(pytree_node=False)
+    critic: nn.Module = struct.field(pytree_node=False)
+    env: Environment = struct.field(pytree_node=False)
+    eval_callback: Callable = struct.field(pytree_node=False)
+    buffer_size: int = struct.field(pytree_node=False)
+    fill_buffer: int = struct.field(pytree_node=False)
+    batch_size: int = struct.field(pytree_node=False)
+    normalize_observations: bool = struct.field(pytree_node=False, default=False)
+    skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
 
     @property
     def agent(self):
@@ -59,14 +45,11 @@ class TD3Config(struct.PyTreeNode):
         return self.env.action_space(self.env_params).high
 
     @classmethod
-    def create(cls, **kwargs):
-        """Create a config object from keyword arguments."""
-        return cls.from_dict(kwargs)
-
-    @classmethod
     def from_dict(cls, config):
-        """Create a config object from a dictionary. Exists mainly for backwards
-        compatibility and will be deprecated in the future."""
+        import gymnax
+        from copy import deepcopy
+        from purerl.evaluate import make_evaluate
+        from purerl.brax2gymnax import Brax2GymnaxEnv
 
         config = deepcopy(config)  # Because we're popping from it
 
@@ -80,23 +63,26 @@ class TD3Config(struct.PyTreeNode):
             env, env_params = gymnax.make(env_id, **env_kwargs)
 
         actor_kwargs = config.pop("actor_kwargs", {})
-        activation = actor_kwargs.pop("activation", "swish")
+        activation = actor_kwargs.pop("activation", "relu")
         actor_kwargs["activation"] = getattr(nn, activation)
         action_range = (
             env.action_space(env_params).low,
             env.action_space(env_params).high,
         )
         action_dim = np.prod(env.action_space(env_params).shape)
-        actor = DeterministicPolicy(
-            action_dim, action_range, hidden_layer_sizes=(64, 64), **actor_kwargs
-        )
+        actor = TD3Actor(action_dim, action_range, **actor_kwargs)
 
         critic_kwargs = config.pop("critic_kwargs", {})
-        activation = critic_kwargs.pop("activation", "swish")
+        activation = critic_kwargs.pop("activation", "relu")
         critic_kwargs["activation"] = getattr(nn, activation)
-        critic = QNetwork(hidden_layer_sizes=(64, 64), **critic_kwargs)
+        critic_cls = nn.vmap(
+            MLPQFunction,
+            variable_axes={"params": 0},
+            split_rngs={"params": True},
+        )
+        critic = critic_cls(**critic_kwargs)
 
-        evaluate = make_evaluate(TD3.make_act, env, env_params, 200)
+        evaluate = make_evaluate(env, env_params, 200)
         return cls(
             env_params=env_params,
             actor=actor,
@@ -105,3 +91,47 @@ class TD3Config(struct.PyTreeNode):
             eval_callback=evaluate,
             **config,
         )
+
+
+class MLPQFunction(nn.Module):
+    activation: Callable = nn.relu
+
+    @nn.compact
+    def __call__(self, obs, action):
+        seq = nn.Sequential(
+            [nn.Dense(64), self.activation, nn.Dense(64), self.activation, nn.Dense(1)]
+        )
+        q = seq(jnp.concatenate([obs.reshape(obs.shape[0], -1), action], axis=-1))
+        return jnp.squeeze(q, axis=-1)
+
+
+class TD3Actor(nn.Module):
+    """Equivaluent to DDPGActor"""
+
+    action_dim: int
+    action_range: Tuple[float, float]
+    activation: Callable = nn.relu
+
+    @property
+    def action_loc(self):
+        return (self.action_range[1] + self.action_range[0]) / 2
+
+    @property
+    def action_scale(self):
+        return (self.action_range[1] - self.action_range[0]) / 2
+
+    @nn.compact
+    def __call__(self, x):
+        x = nn.Dense(64)(x)
+        x = self.activation(x)
+        x = nn.Dense(64)(x)
+        x = self.activation(x)
+        x = nn.Dense(self.action_dim)(x)
+        x = jnp.tanh(x)
+
+        action = self.action_loc + x * self.action_scale
+        return action
+
+    def act(self, obs, rng):
+        action = self(obs)
+        return action

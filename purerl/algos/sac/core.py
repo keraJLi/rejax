@@ -1,50 +1,41 @@
-from copy import deepcopy
-from typing import Any, Callable
+from typing import Any, Callable, Tuple
 
 import chex
+import distrax
 import gymnax
+import jax
 import numpy as np
 from flax import linen as nn
 from flax import struct
+from flax.linen.initializers import constant
 from gymnax.environments.environment import Environment
+from jax import numpy as jnp
 
-from purerl.algos.networks import (
-    DiscretePolicy,
-    DiscreteQNetwork,
-    QNetwork,
-    SquashedGaussianPolicy,
-)
-from purerl.algos.sac.sac import SAC
-from purerl.brax2gymnax import Brax2GymnaxEnv
-from purerl.evaluate import make_evaluate
+# TODO: clean up q_all, q_of, q functions
 
 
 class SACConfig(struct.PyTreeNode):
-    # fmt: off
     # Non-static parameters
-    env: Environment                = struct.field(pytree_node=False)
-    env_params: Any                 = struct.field(pytree_node=True)
-    actor: nn.Module                = struct.field(pytree_node=False)
-    critic: nn.Module               = struct.field(pytree_node=False)
-    eval_callback: Callable         = struct.field(pytree_node=False)
-
-    learning_rate: chex.Scalar      = struct.field(pytree_node=True, default=0.001)
-    gamma: chex.Scalar              = struct.field(pytree_node=True, default=0.99)
-    tau: float                      = struct.field(pytree_node=True, default=0.95)
-    target_entropy_ratio: float     = struct.field(pytree_node=True, default=0.98)
-    reward_scaling: chex.Scalar     = struct.field(pytree_node=True, default=1.0)
+    env_params: Any
+    gamma: chex.Scalar
+    tau: float
+    target_entropy_ratio: float
+    learning_rate: chex.Scalar
 
     # Static parameters
-    total_timesteps: int            = struct.field(pytree_node=False, default=100_000)
-    eval_freq: int                  = struct.field(pytree_node=False, default=10_000)
-    num_envs: int                   = struct.field(pytree_node=False, default=1)
-    buffer_size: int                = struct.field(pytree_node=False, default=100_000)
-    fill_buffer: int                = struct.field(pytree_node=False, default=10_000)
-    batch_size: int                 = struct.field(pytree_node=False, default=256)
-    gradient_steps: int             = struct.field(pytree_node=False, default=1)
-    normalize_observations: bool    = struct.field(pytree_node=False, default=False)
-    skip_initial_evaluation: bool   = struct.field(pytree_node=False, default=False)
-    # fmt: on
+    total_timesteps: int = struct.field(pytree_node=False)
+    eval_freq: int = struct.field(pytree_node=False)
+    agent: nn.Module = struct.field(pytree_node=False)
+    env: Environment = struct.field(pytree_node=False)
+    eval_callback: Callable = struct.field(pytree_node=False)
+    num_envs: int = struct.field(pytree_node=False)
+    buffer_size: int = struct.field(pytree_node=False)
+    fill_buffer: int = struct.field(pytree_node=False)
+    batch_size: int = struct.field(pytree_node=False)
+    gradient_steps: int = struct.field(pytree_node=False)
+    normalize_observations: bool = struct.field(pytree_node=False, default=False)
+    skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
+    reward_scaling: float = struct.field(pytree_node=True, default=1.0)
 
     @property
     def discrete(self):
@@ -56,28 +47,23 @@ class SACConfig(struct.PyTreeNode):
         action_space = self.env.action_space(self.env_params)
         if self.discrete:
             return action_space.n
-        return np.prod(action_space.shape)
+        else:
+            return np.prod(action_space.shape)
 
     @property
     def target_entropy(self):
         if self.discrete:
             return -self.target_entropy_ratio * np.log(1 / self.action_dim)
-        return -self.action_dim
-
-    @property
-    def agent(self):
-        """Backward compatibility with old evaluation creation"""
-        return self.actor
-
-    @classmethod
-    def create(cls, **kwargs):
-        """Create a config object from keyword arguments."""
-        return cls.from_dict(kwargs)
+        else:
+            return -self.action_dim
 
     @classmethod
     def from_dict(cls, config: dict):
-        """Create a config object from a dictionary. Exists mainly for backwards
-        compatibility and will be deprecated in the future."""
+        from copy import deepcopy
+
+        from purerl.brax2gymnax import Brax2GymnaxEnv
+        from purerl.evaluate import make_evaluate
+
         config = deepcopy(config)  # Because we're popping from it
 
         # Get env id and convert to gymnax environment and parameters
@@ -93,32 +79,269 @@ class SACConfig(struct.PyTreeNode):
         discrete = isinstance(action_space, gymnax.environments.spaces.Discrete)
         agent_kwargs = config.pop("agent_kwargs", {})
 
+        if discrete:
+            agent_cls = SACAgentDiscrete
+            action_dim = env.action_space(env_params).n
+        else:
+            # Get action range to pass to agent for action normalization
+            agent_cls = SACAgentContinuous
+            action_range = (
+                env.action_space(env_params).low,
+                env.action_space(env_params).high,
+            )
+            agent_kwargs["action_range"] = action_range
+            action_dim = np.prod(env.action_space(env_params).shape)
+
         # Convert activation from str to Callable
-        activation = agent_kwargs.pop("activation", "swish")
+        activation = agent_kwargs.pop("activation", "relu")
         agent_kwargs["activation"] = getattr(nn, activation)
 
         # Convert hidden layer sizes to tuple
-        hidden_layer_sizes = agent_kwargs.pop("hidden_layer_sizes", (64, 64))
-        agent_kwargs["hidden_layer_sizes"] = tuple(hidden_layer_sizes)
+        hidden_layer_sizes = agent_kwargs.pop("hidden_layer_sizes", None)
+        if hidden_layer_sizes is not None:
+            agent_kwargs["hidden_layer_sizes"] = tuple(hidden_layer_sizes)
 
-        if discrete:
-            actor = DiscretePolicy(action_space.n, **agent_kwargs)
-            critic = DiscreteQNetwork(action_dim=action_space.n, **agent_kwargs)
-        else:
-            actor = SquashedGaussianPolicy(
-                np.prod(action_space.shape),
-                (action_space.low, action_space.high),
-                log_std_range=(-10, 2),
-                **agent_kwargs,
-            )
-            critic = QNetwork(**agent_kwargs)
+        agent = agent_cls(action_dim, **agent_kwargs)
 
-        evaluate = make_evaluate(SAC.make_act, env, env_params, 200)
+        evaluate = make_evaluate(env, env_params, 200)
         return cls(
             env=env,
             env_params=env_params,
-            actor=actor,
-            critic=critic,
+            agent=agent,
             eval_callback=evaluate,
             **config,
         )
+
+
+class SquashedGaussianActor(nn.Module):
+    action_dim: int
+    action_range: Tuple[float, float]
+    hidden_layer_sizes: Tuple[int]
+    activation: Callable
+    log_std_range: Tuple[float, float] = (-20, 2)
+
+    def setup(self):
+        features = []
+        for size in self.hidden_layer_sizes:
+            features.append(nn.Dense(size))
+            features.append(self.activation)
+        self.features = nn.Sequential(features)
+
+        self.action_mean = nn.Dense(self.action_dim)
+        self.action_log_std = nn.Dense(self.action_dim)
+        self.bij = distrax.Tanh()
+
+    @property
+    def action_loc(self):
+        return (self.action_range[1] + self.action_range[0]) / 2
+
+    @property
+    def action_scale(self):
+        return (self.action_range[1] - self.action_range[0]) / 2
+
+    def action_dist(self, obs):
+        obs = obs.reshape((obs.shape[0], -1))
+        features = self.features(obs)
+        action_mean = self.action_mean(features)
+        action_log_std = self.action_log_std(features)
+        action_log_std = jnp.clip(
+            action_log_std, *self.log_std_range
+        ) # TODO: tanh transform
+
+        return distrax.MultivariateNormalDiag(
+            loc=action_mean, scale_diag=jnp.exp(action_log_std)
+        )
+
+    def __call__(self, x, rng):
+        action_dist = self.action_dist(x)
+        action = action_dist.sample(seed=rng)
+        action_log_prob = action_dist.log_prob(action)
+        action, log_det_j = self.bij.forward_and_log_det(action)
+        action = self.action_loc + action * self.action_scale
+        action_log_prob -= log_det_j.sum(axis=-1)
+        return action, action_log_prob
+
+    def log_prob(self, obs, action):
+        action_dist = self.action_dist(obs)
+        action = (action - self.action_loc) / self.action_scale
+        action, log_det_j = self.bij.inverse_and_log_det(action)
+        action_log_prob = action_dist.log_prob(action)
+        action_log_prob += log_det_j.sum(axis=-1)
+        return action_log_prob
+
+    def act(self, obs, rng):
+        action, _ = self(obs, rng)
+        return action
+
+
+class MLPQFunction(nn.Module):
+    hidden_layer_sizes: Tuple[int]
+    activation: Callable
+
+    @nn.compact
+    def __call__(self, obs, action):
+        seq = nn.Sequential(
+            [nn.Dense(64), self.activation, nn.Dense(64), self.activation, nn.Dense(1)]
+        )
+        q = seq(jnp.concatenate([obs.reshape(obs.shape[0], -1), action], axis=-1))
+        return jnp.squeeze(q, axis=-1)
+
+
+class SACAgentContinuous(nn.Module):
+    action_dim: int
+    action_range: Tuple[float, float]
+    hidden_layer_sizes: Tuple[int] = (64, 64)
+    activation: Callable = nn.relu
+    log_std_range: Tuple[float, float] = (-20, 2)
+
+    def setup(self):
+        self.actor = SquashedGaussianActor(
+            self.action_dim,
+            self.action_range,
+            self.hidden_layer_sizes,
+            self.activation,
+            self.log_std_range,
+        )
+        self.q1 = MLPQFunction(self.hidden_layer_sizes, self.activation)
+        self.q2 = MLPQFunction(self.hidden_layer_sizes, self.activation)
+        self.log_alpha = self.param("log_alpha", constant(0.0), ())
+
+    def __call__(self, obs, rng):
+        action, action_log_prob = self.pi(obs, rng)
+        q1, q2 = self.q(obs, action)
+        return action, action_log_prob, q1, q2
+
+    def act(self, obs, rng):
+        action, _ = self.pi(obs, rng)
+        return action
+
+    def pi(self, obs, rng):
+        action, action_log_prob = self.actor(obs, rng)
+        return action, action_log_prob
+
+    def q(self, obs, action):
+        q1 = self.q1(obs, action)
+        q2 = self.q2(obs, action)
+        return q1, q2
+
+    def log_alpha(self):
+        return self.log_alpha
+
+    def log_prob(self, obs, action):
+        return self.actor.log_prob(obs, action)
+
+
+class DiscreteActor(nn.Module):
+    action_dim: int
+    hidden_layer_sizes: Tuple[int]
+    activation: Callable
+
+    def setup(self):
+        features = []
+        for size in self.hidden_layer_sizes:
+            features.append(nn.Dense(size))
+            features.append(self.activation)
+        self.features = nn.Sequential(features)
+
+        self.action_logits = nn.Dense(self.action_dim)
+
+    def __call__(self, x, rng):
+        x = x.reshape((x.shape[0], -1))
+        features = self.features(x)
+        action_logits = self.action_logits(features)
+        action_dist = distrax.Categorical(logits=action_logits)
+        action = action_dist.sample(seed=rng)
+
+        action_logprobs = jax.nn.log_softmax(action_logits)
+        return action, action_logprobs
+
+    def act(self, obs, rng):
+        action, _ = self(obs, rng)
+        return action
+
+
+class DuelingQNetwork(nn.Module):
+    action_dim: int
+    hidden_layer_sizes: Tuple[int]
+    activation: Callable
+
+    def setup(self):
+        encoder = []
+        for size in self.hidden_layer_sizes:
+            encoder.append(nn.Dense(size))
+            encoder.append(self.activation)
+        self.encoder = nn.Sequential(encoder)
+
+        self.value_ = nn.Dense(1)
+        self.advantage_ = nn.Dense(self.action_dim)
+
+    def encode(self, x):
+        x = x.reshape((x.shape[0], -1))
+        return self.encoder(x)
+
+    def value(self, x_encoded):
+        return self.value_(x_encoded)
+
+    def advantage(self, x_encoded):
+        advantage = self.advantage_(x_encoded)
+        advantage = advantage - jnp.mean(advantage, axis=-1, keepdims=True)
+        return advantage
+
+    def __call__(self, x):
+        x_encoded = self.encode(x)
+        value = self.value(x_encoded)
+        advantage = self.advantage(x_encoded)
+        return value + advantage
+
+    def q_of(self, obs, action):
+        q_values = self(obs)
+        return jnp.take_along_axis(q_values, action[:, None], axis=1).squeeze(axis=1)
+
+
+class SACAgentDiscrete(nn.Module):
+    action_dim: int
+    hidden_layer_sizes: Tuple[int] = (64, 64)
+    activation: Callable = nn.relu
+
+    def setup(self):
+        self.actor = DiscreteActor(
+            self.action_dim, self.hidden_layer_sizes, self.activation
+        )
+
+        # TODO: give type of Q network as argument
+        self.q1 = DuelingQNetwork(
+            self.action_dim, self.hidden_layer_sizes, self.activation
+        )
+        self.q2 = DuelingQNetwork(
+            self.action_dim, self.hidden_layer_sizes, self.activation
+        )
+        self.log_alpha = self.param("log_alpha", constant(0.0), ())
+
+    def __call__(self, obs, rng):
+        action, action_logprobs = self.actor(obs, rng)
+        q1, q2 = self.q_all(obs)
+        # TODO: do you use action_logits or action?
+        return action, action_logprobs, q1, q2
+
+    def pi(self, obs, rng):
+        action, action_logprobs = self.actor(obs, rng)
+        return action, action_logprobs
+
+    def q_all(self, obs, *args):
+        # action is passed by the algorithm since it works for both discrete and
+        # continuous. This should be fixed later
+        q1 = self.q1(obs)
+        q2 = self.q2(obs)
+        return q1, q2
+
+    def q(self, obs, action):
+        q1 = jnp.take_along_axis(self.q1(obs), action[:, None], axis=1).squeeze()
+        q2 = jnp.take_along_axis(self.q2(obs), action[:, None], axis=1).squeeze()
+        return q1, q2
+
+    def act(self, obs, rng):
+        action = self.actor.act(obs, rng)
+        return action
+
+    def log_alpha(self):
+        return self.log_alpha

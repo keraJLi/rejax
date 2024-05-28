@@ -1,16 +1,16 @@
 from typing import Any
 
-import chex
 import jax
-import numpy as np
+import chex
 import optax
+import numpy as np
+from jax import numpy as jnp
 from flax.core.frozen_dict import FrozenDict
 from flax.training.train_state import TrainState
-from jax import numpy as jnp
 
 from purerl.algos.algorithm import Algorithm
 from purerl.algos.buffers import Minibatch, ReplayBuffer
-from purerl.normalize import RMSState, normalize_obs, update_rms
+from purerl.normalize import RMSState, update_rms, normalize_obs
 
 
 class DDPGTrainState(TrainState):
@@ -115,8 +115,8 @@ class DDPG(Algorithm):
 
         # Collect transitions
         uniform = jnp.logical_not(start_training)
-        ts, transitions = cls.collect_transitions(config, ts, uniform=uniform)
-        ts = ts.replace(replay_buffer=ts.replay_buffer.extend(transitions))
+        ts, batch = cls.collect_transitions(config, ts, uniform=uniform)
+        ts = ts.replace(replay_buffer=ts.replay_buffer.extend(batch))
 
         def update_iteration(ts):
             # Sample minibatch

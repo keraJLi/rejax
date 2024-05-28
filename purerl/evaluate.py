@@ -1,10 +1,9 @@
-from functools import partial
-from typing import Any, Callable, NamedTuple, Tuple
-
-import chex
 import jax
+import chex
 import jax.numpy as jnp
+from functools import partial
 from gymnax.environments import environment
+from typing import Any, NamedTuple, Callable, Tuple
 
 from purerl.normalize import normalize_obs
 
@@ -83,12 +82,19 @@ def evaluate(
     return vmap_collect(act, env, env_params, seeds, max_steps_in_episode)
 
 
-def make_evaluate(make_act, env, env_params, num_seeds, max_steps_in_episode=None):
+def make_evaluate(env, env_params, num_seeds, max_steps_in_episode=None):
     if max_steps_in_episode is None:
         max_steps_in_episode = env_params.max_steps_in_episode
 
     def _evaluate(config, ts, rng):
-        act = make_act(config, ts)
+        def act(obs, rng):
+            if getattr(config, "normalize_observations", False):
+                obs = normalize_obs(ts.rms_state, obs)
+
+            obs = jnp.expand_dims(obs, 0)
+            action = config.agent.apply(ts.params, obs, rng, method="act")
+            return jnp.squeeze(action)
+
         return evaluate(act, rng, env, env_params, num_seeds, max_steps_in_episode)
 
     return _evaluate

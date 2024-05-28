@@ -1,35 +1,24 @@
 from typing import Any
 
-import chex
 import jax
-import numpy as np
+import chex
 import optax
+import numpy as np
 from flax import struct
+from jax import numpy as jnp
 from flax.core.frozen_dict import FrozenDict
 from flax.training.train_state import TrainState
-from jax import numpy as jnp
 
 from purerl.algos.algorithm import Algorithm
-from purerl.algos.buffers import Minibatch, ReplayBuffer
-from purerl.normalize import RMSState, normalize_obs, update_rms
-
-# Algorithm outline
-# num_eval_iterations = total_timesteps / eval_freq
-# num_train_iterations = eval_freq / (num_envs * policy_delay)
-# for _ in range(num_eval_iterations):
-#   for _ in range(num_train_iterations):
-#     for _ in range(policy_delay):
-#       M = collect num_gradient_steps minibatches
-#       update critic using M
-#     update actor using M
-#     update target networks
+from purerl.algos.buffers import ReplayBuffer, Minibatch
+from purerl.normalize import RMSState, update_rms, normalize_obs
 
 
 class TD3TrainState(struct.PyTreeNode):
-    actor_ts: TrainState
-    actor_target_params: FrozenDict
-    critic_ts: TrainState
-    critic_target_params: FrozenDict
+    q_ts: TrainState
+    q_target_params: FrozenDict
+    pi_ts: TrainState
+    pi_target_params: FrozenDict
 
     replay_buffer: ReplayBuffer
     env_state: Any
@@ -45,83 +34,10 @@ class TD3TrainState(struct.PyTreeNode):
     @property
     def params(self):
         """So that train_states.params are the params for config.agent"""
-        return self.actor_ts.params
+        return self.pi_ts.params
 
 
 class TD3(Algorithm):
-    @classmethod
-    def make_act(cls, config, ts):
-        def act(obs, rng):
-            if getattr(config, "normalize_observations", False):
-                obs = normalize_obs(ts.rms_state, obs)
-
-            obs = jnp.expand_dims(obs, 0)
-            action = config.actor.apply(ts.params, obs, rng, method="act")
-            return jnp.squeeze(action)
-
-        return act
-
-    @classmethod
-    def initialize_train_state(cls, config, rng):
-        # Initialize optimizer
-        tx = optax.chain(
-            optax.clip_by_global_norm(config.max_grad_norm),
-            optax.adam(config.learning_rate, eps=1e-5),
-        )
-
-        # Initialize network parameters and train states
-        rng, rng_critic, rng_pi = jax.random.split(rng, 3)
-        rng_critic = jax.random.split(rng_critic, 2)
-        obs_ph = jnp.zeros((1, *config.env.observation_space(config.env_params).shape))
-
-        act_ph = jnp.zeros((1, *config.env.action_space(config.env_params).shape))
-        actor_params = config.actor.init(rng_pi, obs_ph)
-        actor_target_params = actor_params
-        actor_ts = TrainState.create(
-            apply_fn=config.actor.apply,
-            params=actor_params,
-            tx=tx,
-        )
-
-        critic_params = jax.vmap(config.critic.init, in_axes=(0, None, None))(
-            rng_critic, obs_ph, act_ph
-        )
-        critic_target_params = critic_params
-        critic_ts = TrainState.create(apply_fn=(), params=critic_params, tx=tx)
-
-        # Initialize environment
-        rng, rng_reset = jax.random.split(rng)
-        rng_reset = jax.random.split(rng_reset, config.num_envs)
-        vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
-        obs, env_state = vmap_reset(rng_reset, config.env_params)
-
-        # Initialize replay buffer
-        replay_buffer = ReplayBuffer.empty(
-            size=config.buffer_size,
-            obs_space=config.env.observation_space(config.env_params),
-            action_space=config.env.action_space(config.env_params),
-        )
-
-        # Initialize observation normalization
-        rms_state = RMSState.create(obs.shape[1:])
-        if config.normalize_observations:
-            rms_state = update_rms(rms_state, obs)
-
-        train_state = TD3TrainState(
-            actor_ts=actor_ts,
-            actor_target_params=actor_target_params,
-            critic_ts=critic_ts,
-            critic_target_params=critic_target_params,
-            replay_buffer=replay_buffer,
-            env_state=env_state,
-            last_obs=obs,
-            global_step=0,
-            rms_state=rms_state,
-            rng=rng,
-        )
-
-        return train_state
-
     @classmethod
     def train(cls, config, rng=None, train_state=None):
         if train_state is None and rng is None:
@@ -133,12 +49,10 @@ class TD3(Algorithm):
             initial_evaluation = config.eval_callback(config, ts, ts.rng)
 
         def eval_iteration(ts, unused):
-            # Run a few trainig iterations
-            steps_per_train_it = config.num_envs * config.policy_delay
-            num_train_its = np.ceil(config.eval_freq / steps_per_train_it).astype(int)
+            # Run a few training iterations
             ts = jax.lax.fori_loop(
                 0,
-                num_train_its,
+                config.eval_freq,
                 lambda _, ts: cls.train_iteration(config, ts),
                 ts,
             )
@@ -163,139 +77,167 @@ class TD3(Algorithm):
         return ts, evaluation
 
     @classmethod
-    def train_iteration(cls, config, ts):
-        placeholder_minibatch = jax.tree_map(
-            lambda sdstr: jnp.empty((config.gradient_steps, *sdstr.shape), sdstr.dtype),
-            ts.replay_buffer.sample(config.batch_size, jax.random.PRNGKey(0)),
+    def initialize_train_state(cls, config, rng):
+        rng, rng_q, rng_pi = jax.random.split(rng, 3)
+        q_params = config.critic.init(
+            rng_q,
+            jnp.zeros((2, 1, *config.env.observation_space(config.env_params).shape)),
+            jnp.zeros((2, 1, *config.env.action_space(config.env_params).shape)),
         )
-        ts, minibatch = jax.lax.fori_loop(
-            0,
-            config.policy_delay,
-            lambda _, ts_mb: cls.train_critic(config, ts_mb[0]),
-            (ts, placeholder_minibatch),
+        q_target_params = q_params
+        q_tx = optax.chain(
+            optax.clip_by_global_norm(config.max_grad_norm),
+            optax.adam(config.learning_rate, eps=1e-5),
         )
-        ts = cls.train_policy(config, ts, minibatch)
-        return ts
+
+        def q_apply_fn(params, obs, action, **kwargs):
+            obs = jnp.repeat(jnp.expand_dims(obs, 0), 2, axis=0)
+            action = jnp.repeat(jnp.expand_dims(action, 0), 2, axis=0)
+            return config.critic.apply(params, obs, action, **kwargs)
+
+        q_ts = TrainState.create(
+            apply_fn=q_apply_fn,
+            params=q_params,
+            tx=q_tx,
+        )
+
+        pi_params = config.actor.init(
+            rng_pi,
+            jnp.zeros((1, *config.env.observation_space(config.env_params).shape)),
+        )
+        pi_target_params = pi_params
+        pi_tx = optax.chain(
+            optax.clip_by_global_norm(config.max_grad_norm),
+            optax.adam(config.learning_rate, eps=1e-5),
+        )
+        pi_ts = TrainState.create(
+            apply_fn=config.actor.apply,
+            params=pi_params,
+            tx=pi_tx,
+        )
+
+        rng, rng_reset = jax.random.split(rng)
+        obs, env_state = config.env.reset(rng_reset, config.env_params)
+
+        replay_buffer = ReplayBuffer.empty(
+            size=config.buffer_size,
+            obs_space=config.env.observation_space(config.env_params),
+            action_space=config.env.action_space(config.env_params),
+        )
+
+        rms_state = RMSState.create(obs.shape)
+        if config.normalize_observations:
+            rms_state = update_rms(rms_state, obs, batched=False)
+
+        train_state = TD3TrainState(
+            q_ts=q_ts,
+            q_target_params=q_target_params,
+            pi_ts=pi_ts,
+            pi_target_params=pi_target_params,
+            replay_buffer=replay_buffer,
+            env_state=env_state,
+            last_obs=obs,
+            global_step=0,
+            rms_state=rms_state,
+            rng=rng,
+        )
+
+        return train_state
 
     @classmethod
-    def train_critic(cls, config, ts):
+    def train_iteration(cls, config, ts):
         start_training = ts.global_step > config.fill_buffer
 
         # Collect transition
-        uniform = jnp.logical_not(start_training)
-        ts, transitions = cls.collect_transitions(config, ts, uniform=uniform)
-        ts = ts.replace(replay_buffer=ts.replay_buffer.extend(transitions))
-
-        def update_iteration(ts, unused):
-            # Sample minibatch
-            ts, rng_sample = ts.get_rng()
-            minibatch = ts.replay_buffer.sample(config.batch_size, rng_sample)
-            if config.normalize_observations:
-                minibatch = minibatch._replace(
-                    obs=normalize_obs(ts.rms_state, minibatch.obs),
-                    next_obs=normalize_obs(ts.rms_state, minibatch.next_obs),
-                )
-
-            # Update network
-            ts = cls.update_critic(config, ts, minibatch)
-            return ts, minibatch
-
-        def do_updates(ts):
-            return jax.lax.scan(update_iteration, ts, None, config.gradient_steps)
-
-        placeholder_minibatch = jax.tree_map(
-            lambda sdstr: jnp.empty((config.gradient_steps, *sdstr.shape), sdstr.dtype),
-            ts.replay_buffer.sample(config.batch_size, jax.random.PRNGKey(0)),
-        )
-        ts, minibatches = jax.lax.cond(
-            start_training,
-            do_updates,
-            lambda ts: (ts, placeholder_minibatch),
-            ts,
-        )
-        return ts, minibatches
-
-    @classmethod
-    def train_policy(cls, config, ts, minibatches):
-        def do_updates(ts):
-            ts, _ = jax.lax.scan(
-                lambda ts, minibatch: (cls.update_actor(config, ts, minibatch), None),
-                ts,
-                minibatches,
-            )
-            return ts
-
-        start_training = ts.global_step > config.fill_buffer
-        ts = jax.lax.cond(start_training, do_updates, lambda ts: ts, ts)
-
-        # Update target networks
-        critic_target_network = jax.tree_map(
-            lambda q, qt: (1 - config.tau) * q + config.tau * qt,
-            ts.critic_ts.params,
-            ts.critic_target_params,
-        )
-        actor_target_network = jax.tree_map(
-            lambda pi, pit: (1 - config.tau) * pi + config.tau * pit,
-            ts.actor_ts.params,
-            ts.actor_target_params,
-        )
-        ts = ts.replace(
-            critic_target_params=critic_target_network,
-            actor_target_params=actor_target_network,
-        )
-        return ts
-
-    @classmethod
-    def collect_transitions(cls, config, ts, uniform=False):
-        # Sample actions
-        ts, rng_action = ts.get_rng()
-
-        def sample_uniform(rng):
-            sample_fn = config.env.action_space(config.env_params).sample
-            return jax.vmap(sample_fn)(jax.random.split(rng, config.num_envs))
-
-        def sample_policy(rng):
-            if config.normalize_observations:
-                last_obs = normalize_obs(ts.rms_state, ts.last_obs)
-            else:
-                last_obs = ts.last_obs
-
-            actions = config.actor.apply(ts.actor_ts.params, last_obs)
-            noise = config.exploration_noise * jax.random.normal(rng, actions.shape)
-            return jnp.clip(actions + noise, config.action_low, config.action_high)
-
-        actions = jax.lax.cond(uniform, sample_uniform, sample_policy, rng_action)
-
-        # Step environment
-        ts, rng_steps = ts.get_rng()
-        rng_steps = jax.random.split(rng_steps, config.num_envs)
-        vmap_step = jax.vmap(config.env.step, in_axes=(0, 0, 0, None))
-        next_obs, env_state, rewards, dones, _ = vmap_step(
-            rng_steps, ts.env_state, actions, config.env_params
-        )
+        ts, rng = ts.get_rng()
+        rng_uniform, rng_noise, rng_step = jax.random.split(rng, 3)
 
         if config.normalize_observations:
-            ts = ts.replace(rms_state=update_rms(ts.rms_state, next_obs))
+            last_obs = normalize_obs(ts.rms_state, ts.last_obs)
+        else:
+            last_obs = ts.last_obs
 
-        # Return minibatch and updated train state
+        action = jax.lax.cond(
+            jnp.logical_not(start_training),
+            lambda rng: config.env.action_space(config.env_params).sample(rng),
+            lambda _: ts.pi_ts.apply_fn(ts.pi_ts.params, last_obs),
+            rng_uniform,
+        )
+        noise = config.exploration_noise * jax.random.normal(rng_noise, action.shape)
+        action = jnp.clip(action + noise, config.action_low, config.action_high)
+
+        next_obs, env_state, rewards, dones, _ = config.env.step(
+            rng_step, ts.env_state, action, config.env_params
+        )
         minibatch = Minibatch(
             obs=ts.last_obs,
-            action=actions,
+            action=action,
             reward=rewards,
             next_obs=next_obs,
             done=dones,
         )
+        if config.normalize_observations:
+            ts = ts.replace(rms_state=update_rms(ts.rms_state, next_obs, batched=False))
+
         ts = ts.replace(
             last_obs=next_obs,
             env_state=env_state,
-            global_step=ts.global_step + config.num_envs,
+            global_step=ts.global_step + 1,
+            replay_buffer=ts.replay_buffer.append(minibatch),
         )
-        return ts, minibatch
+
+        # Perform updates to q network
+        def update_iteration(ts):
+            # Sample minibatch
+            ts, rng_sample = ts.get_rng()
+            minibatch = ts.replay_buffer.sample(config.batch_size, rng_sample)
+            minibatch = minibatch._replace(
+                obs=normalize_obs(ts.rms_state, minibatch.obs),
+                next_obs=normalize_obs(ts.rms_state, minibatch.next_obs),
+            )
+
+            # Update network
+            ts = cls.update_q(config, ts, minibatch)
+            ts = jax.lax.cond(
+                (ts.global_step + 1) % config.policy_delay == 0,
+                lambda ts: cls.update_pi(ts, minibatch),
+                lambda ts: ts,
+                ts,
+            )
+            return ts
+
+        # Do updates if buffer is sufficiently full
+        # TODO: is predicate of cond vmapped, i.e. converted to select? Would introduce
+        # unnecessary computation
+        ts = jax.lax.cond(
+            start_training,
+            lambda ts: update_iteration(ts),
+            lambda ts: ts,
+            ts,
+        )
+
+        # Update target networks
+        q_target_network = jax.tree_map(
+            lambda q, qt: (1 - config.tau) * q + config.tau * qt,
+            ts.q_ts.params,
+            ts.q_target_params,
+        )
+        pi_target_network = jax.tree_map(
+            lambda pi, pit: (1 - config.tau) * pi + config.tau * pit,
+            ts.pi_ts.params,
+            ts.pi_target_params,
+        )
+
+        ts = ts.replace(
+            q_target_params=q_target_network, pi_target_params=pi_target_network
+        )
+
+        return ts
 
     @classmethod
-    def update_critic(cls, config, ts, minibatch):
-        def critic_loss_fn(params):
-            action = ts.actor_ts.apply_fn(ts.actor_target_params, minibatch.next_obs)
+    def update_q(cls, config, ts, minibatch):
+        def q_loss(params):
+            action = ts.pi_ts.apply_fn(ts.pi_target_params, minibatch.next_obs)
             noise = jnp.clip(
                 config.target_noise * jax.random.normal(ts.rng, action.shape),
                 -config.target_noise_clip,
@@ -303,32 +245,28 @@ class TD3(Algorithm):
             )
             action = jnp.clip(action + noise, config.action_low, config.action_high)
 
-            q1_target, q2_target = jax.vmap(
-                config.critic.apply, in_axes=(0, None, None)
-            )(ts.critic_target_params, minibatch.next_obs, action)
+            q1_target, q2_target = ts.q_ts.apply_fn(
+                ts.q_target_params, minibatch.next_obs, action
+            )
             q_target = jnp.minimum(q1_target, q2_target)
             target = minibatch.reward + (1 - minibatch.done) * config.gamma * q_target
-            q1, q2 = jax.vmap(config.critic.apply, in_axes=(0, None, None))(
-                params, minibatch.obs, minibatch.action
-            )
+            q1, q2 = ts.q_ts.apply_fn(params, minibatch.obs, minibatch.action)
 
             loss_q1 = optax.l2_loss(q1, target).mean()
             loss_q2 = optax.l2_loss(q2, target).mean()
             return loss_q1 + loss_q2
 
-        grads = jax.grad(critic_loss_fn)(ts.critic_ts.params)
-        ts = ts.replace(critic_ts=ts.critic_ts.apply_gradients(grads=grads))
+        grads = jax.grad(q_loss)(ts.q_ts.params)
+        ts = ts.replace(q_ts=ts.q_ts.apply_gradients(grads=grads))
         return ts
 
     @classmethod
-    def update_actor(cls, config, ts, minibatch):
-        def actor_loss_fn(params):
-            action = config.actor.apply(params, minibatch.obs)
-            q = jax.vmap(config.critic.apply, in_axes=(0, None, None))(
-                ts.critic_ts.params, minibatch.obs, action
-            )
+    def update_pi(cls, ts, minibatch):
+        def pi_loss(params):
+            action = ts.pi_ts.apply_fn(params, minibatch.obs)
+            q = ts.q_ts.apply_fn(ts.q_ts.params, minibatch.obs, action)
             return -q.mean()
 
-        grads = jax.grad(actor_loss_fn)(ts.actor_ts.params)
-        ts = ts.replace(actor_ts=ts.actor_ts.apply_gradients(grads=grads))
+        grads = jax.grad(pi_loss)(ts.pi_ts.params)
+        ts = ts.replace(pi_ts=ts.pi_ts.apply_gradients(grads=grads))
         return ts
