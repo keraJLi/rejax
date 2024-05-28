@@ -1,6 +1,5 @@
 from rejax.algos.ddpg import DDPG, DDPGConfig
 from rejax.algos.dqn import DQN, DQNConfig
-from rejax.algos.es import ESConfig, train_es
 from rejax.algos.ppo import PPO, PPOConfig
 from rejax.algos.sac import SAC, SACConfig
 from rejax.algos.td3 import TD3, TD3Config
@@ -11,15 +10,12 @@ _algos = {
     "sac": (SAC, SACConfig),
     "ddpg": (DDPG, DDPGConfig),
     "td3": (TD3, TD3Config),
-    # "es": (train_es, ESConfig),
 }
 
 
 def get_agent(agent_str):
     """Gets a pair of `(train_fn, config_cls)`. Will be deprecated in the future, exists
     mainly for backwards compatibility."""
-    if agent_str == "es":
-        return train_es, ESConfig
     algo_cls, config_cls = _algos[agent_str]
     return algo_cls.train, config_cls
 
