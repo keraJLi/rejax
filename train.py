@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 from matplotlib import pyplot as plt
 
-from purerl import get_algo
+from rejax import get_algo
 
 
 def main(algo_str, config, seed_id, num_seeds, time_fit):

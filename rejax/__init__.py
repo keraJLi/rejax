@@ -1,9 +1,9 @@
-from purerl.algos.ddpg import DDPG, DDPGConfig
-from purerl.algos.dqn import DQN, DQNConfig
-from purerl.algos.es import ESConfig, train_es
-from purerl.algos.ppo import PPO, PPOConfig
-from purerl.algos.sac import SAC, SACConfig
-from purerl.algos.td3 import TD3, TD3Config
+from rejax.algos.ddpg import DDPG, DDPGConfig
+from rejax.algos.dqn import DQN, DQNConfig
+from rejax.algos.es import ESConfig, train_es
+from rejax.algos.ppo import PPO, PPOConfig
+from rejax.algos.sac import SAC, SACConfig
+from rejax.algos.td3 import TD3, TD3Config
 
 _algos = {
     "ppo": (PPO, PPOConfig),

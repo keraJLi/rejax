@@ -1,14 +1,15 @@
-import os
-import jax
 import json
+import os
 import time
+
+import jax
+import jax.numpy as jnp
 import numpy as np
 import pandas as pd
-import jax.numpy as jnp
 from flax import serialization
 
-from purerl.algos import get_agent
-from purerl.evaluate import make_evaluate as make_evaluate_vanilla
+from rejax.algos import get_agent
+from rejax.evaluate import make_evaluate as make_evaluate_vanilla
 
 
 class Logger:
@@ -188,7 +189,9 @@ def main(args, config):
 
 if __name__ == "__main__":
     import argparse
-    from yaml import load, CLoader as Loader
+
+    from yaml import CLoader as Loader
+    from yaml import load
 
     parser = argparse.ArgumentParser()
     parser.add_argument(

@@ -9,10 +9,10 @@ from flax import struct
 from gymnax.environments.environment import Environment
 from jax import numpy as jnp
 
-from purerl.algos.networks import DiscretePolicy, GaussianPolicy, VNetwork
-from purerl.algos.ppo.ppo import PPO
-from purerl.brax2gymnax import Brax2GymnaxEnv
-from purerl.evaluate import make_evaluate
+from rejax.algos.networks import DiscretePolicy, GaussianPolicy, VNetwork
+from rejax.algos.ppo.ppo import PPO
+from rejax.brax2gymnax import Brax2GymnaxEnv
+from rejax.evaluate import make_evaluate
 
 
 class PPOConfig(struct.PyTreeNode):

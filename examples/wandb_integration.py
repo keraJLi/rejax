@@ -5,7 +5,7 @@ import jax
 from jax import numpy as jnp
 
 import wandb
-from purerl import get_algo
+from rejax import get_algo
 
 CONFIG = {
     "env": "brax/ant",

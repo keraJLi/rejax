@@ -9,10 +9,10 @@ from gymnax.environments.environment import Environment
 from jax import numpy as jnp
 from optax import linear_schedule
 
-from purerl.algos.dqn.dqn import DQN
-from purerl.algos.networks import DiscreteQNetwork, DuelingQNetwork, EpsilonGreedyPolicy
-from purerl.brax2gymnax import Brax2GymnaxEnv
-from purerl.evaluate import make_evaluate
+from rejax.algos.dqn.dqn import DQN
+from rejax.algos.networks import DiscreteQNetwork, DuelingQNetwork, EpsilonGreedyPolicy
+from rejax.brax2gymnax import Brax2GymnaxEnv
+from rejax.evaluate import make_evaluate
 
 
 class DQNConfig(struct.PyTreeNode):
