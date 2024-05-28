@@ -1,11 +1,11 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="pureRL",
+    name="rejax",
     version="0.0.1",
-    url="https://github.com/keraJLi/pureRL",
+    url="https://github.com/keraJLi/rejax",
     author="Jarek Liesen",
-    description="Minimal implementations of RL algorithms in jax",
+    description="Lightweight library of RL algorithms in Jax",
     packages=find_packages(),
     install_requires=[
         "flax",
