@@ -32,6 +32,8 @@ If you're new to <strong>rejax</strong> and want to learn more about it,
 
 Here's what you can expect:
 
+![rejax demo](img/rejax%20animation.gif)
+
 ## ⚡ Vectorize training for incredible speedups!
 - Use `jax.jit` on the whole train function to run training exclusively on your GPU!
 - Use `jax.vmap` and `jax.pmap` on the initial seed or hyperparameters to train a whole batch of agents in parallel! 
