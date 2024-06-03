@@ -34,6 +34,10 @@ Here's what you can expect:
 
 ![rejax demo](img/rejax%20animation.gif)
 
+## 🏗 Installing rejax
+1. Install via pip: `pip install rejax`
+2. Install from source: `pip install git+https://github.com/keraJLi/rejax`
+
 ## ⚡ Vectorize training for incredible speedups!
 - Use `jax.jit` on the whole train function to run training exclusively on your GPU!
 - Use `jax.vmap` and `jax.pmap` on the initial seed or hyperparameters to train a whole batch of agents in parallel! 
@@ -124,10 +128,6 @@ Libraries:
 Single file implementations:
 - [PureJaxRL](https://github.com/luchris429/purejaxrl/) implements PPO, recurrent PPO and DQN
 - [Stoix](https://github.com/EdanToledo/Stoix) features DQN, DDPG, TD3, SAC, PPO, as well as popular extensions and more
-
-## 🏗 Installing rejax
-1. Install via pip: `pip install rejax`
-2. Install from source: `pip install git+https://github.com/keraJLi/rejax`
 
 ## ✍ Cite us!
 ```bibtex
