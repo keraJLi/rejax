@@ -6,7 +6,7 @@
   <h1>
     Rejax
     <br>
-    <span style="font-size: large">Fully Vectorizable Reinforcement Learning Algorithms in Jax!</span>
+    <span style="font-size: large">Hardware-Accelerated Reinforcement Learning Algorithms in pure Jax!</span>
     <br>
     <a href="https://colab.research.google.com/github/kerajli/rejax/blob/master/examples/rejax_tour.ipynb">
       <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
@@ -17,11 +17,17 @@
     <a href="https://opensource.org/licenses/Apache-2.0">
       <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache 2.0">
     </a>
+    <a href="https://badge.fury.io/py/rejax">
+      <img src="https://badge.fury.io/py/rejax.svg" alt="PyPI version">
+    </a>
   </h1>
   </div>
 </div>
 <br>
 
+Rejax is a library of RL algorithms which are implemented in pure Jax. 
+It allows you to accelerate your RL pipelines by using `jax.jit`, `jax.vmap`, `jax.pmap` or any other transformation on whole training algorithms.
+Use it to quickly search for hyperparameters, evaluate agents for multiple seeds in parallel, or run meta-evolution experiments on your GPUs and TPUs.
 If you're new to <strong>rejax</strong> and want to learn more about it,
 <h3 align="center">
 <a href="https://colab.research.google.com/github/kerajli/rejax/blob/master/examples/rejax_tour.ipynb" style="margin-right: 15px">
@@ -29,8 +35,6 @@ If you're new to <strong>rejax</strong> and want to learn more about it,
 </a>
 📸 Take a tour
 </h3>
-
-Here's what you can expect:
 
 ![rejax demo](img/rejax%20animation.gif)
 
@@ -60,19 +64,20 @@ keys = jax.random.split(jax.random.PRNGKey(0), 300)
 train_state, evaluation = vmapped_train_fn(train_config, keys)
 ```
 
+Benchmark on an A100 80G and a Intel Xeon 4215R CPU. Note that the hyperparameters were set to the default values of cleanRL, including buffer sizes. Shrinking the buffers can yield additional speedups due to better caching, and enables training of even more agents in parallel.
+
 ![Speedup over cleanRL on hopper](img/speedup_brax.png)
 ![Speedup over cleanRL on breakout](img/speedup_minatar.png)
 
-Benchmark on an A100 80G and a Intel Xeon 4215R CPU. Note that the hyperparameters were set to the default values of cleanRL, including buffer sizes. Shrinking the buffers can yield additional speedups due to better caching, and enables training of even more agents in parallel.
 
 ## 🤖 Implemented algorithms
-| Algorithm | Discrete | Continuous | Notes                                                                          |
-| --------- | -------- | ---------- | ------------------------------------------------------------------------------ |
-| PPO       | ✔        | ✔          |                                                                                |
-| SAC       | ✔        | ✔          | discrete version as in [Christodoulou, 2019](https://arxiv.org/abs/1910.07207) |
-| DQN       | ✔        |            | incl. DDQN, Dueling DQN                                                        |
-| DDPG      |          | ✔          |                                                                                |
-| TD3       |          | ✔          |                                                                                |
+| Algorithm | Link | Discrete | Continuous | Notes                                                                          |
+| --------- | ---- | -------- | ---------- | ------------------------------------------------------------------------------ |
+| PPO       | [here](https://github.com/keraJLi/rejax/tree/main/rejax/algos/ppo/ppo.py) | ✔        | ✔          |                                                                                |
+| SAC       | [here](https://github.com/keraJLi/rejax/tree/main/rejax/algos/sac/sac.py) | ✔        | ✔          | discrete version as in [Christodoulou, 2019](https://arxiv.org/abs/1910.07207) |
+| DQN       | [here](https://github.com/keraJLi/rejax/tree/main/rejax/algos/dqn/dqn.py) | ✔        |            | incl. DDQN, Dueling DQN                                                        |
+| DDPG      | [here](https://github.com/keraJLi/rejax/tree/main/rejax/algos/ddpg/ddpg.py) |          | ✔          |                                                                                |
+| TD3       | [here](https://github.com/keraJLi/rejax/tree/main/rejax/algos/td3/td3.py) |          | ✔          |                                                                                |
 
 
 ## 🛠 Easily extend and modify algorithms
