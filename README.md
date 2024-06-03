@@ -43,7 +43,7 @@ from rejax.algos import get_agent
 
 # Get train function and initialize config for training
 train_fn, config_cls = get_agent("sac")
-train_config = config_cls.make(env="CartPole-v1", learning_rate=0.001)
+train_config = config_cls.create(env="CartPole-v1", learning_rate=0.001)
 
 # Jit the training function
 jitted_train_fn = jax.jit(train_fn)
