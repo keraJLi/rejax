@@ -6,29 +6,34 @@ from flax import struct
 from gymnax.environments.environment import Environment
 from jax import numpy as jnp
 
+from rejax.algos.ddpg.ddpg import DDPG
+
 
 class DDPGConfig(struct.PyTreeNode):
+    # fmt: off
     # Non-static parameters
-    env_params: Any
-    gamma: chex.Scalar
-    tau: chex.Scalar
-    max_grad_norm: chex.Scalar
-    learning_rate: chex.Scalar
-    exploration_noise: chex.Scalar
+    env: Environment                = struct.field(pytree_node=False)
+    env_params: Any                 = struct.field(pytree_node=True)
+    eval_callback: Callable         = struct.field(pytree_node=False)
+    agent: nn.Module                = struct.field(pytree_node=False)
+
+    learning_rate: chex.Scalar      = struct.field(pytree_node=True, default=0.001)
+    gamma: chex.Scalar              = struct.field(pytree_node=True, default=0.99)
+    tau: chex.Scalar                = struct.field(pytree_node=True, default=0.95)
+    exploration_noise: chex.Scalar  = struct.field(pytree_node=True, default=0.3)
+    max_grad_norm: chex.Scalar      = struct.field(pytree_node=True, default=jnp.inf)
 
     # Static parameters
-    total_timesteps: int = struct.field(pytree_node=False)
-    eval_freq: int = struct.field(pytree_node=False)
-    agent: nn.Module = struct.field(pytree_node=False)
-    env: Environment = struct.field(pytree_node=False)
-    eval_callback: Callable = struct.field(pytree_node=False)
-    num_envs: int = struct.field(pytree_node=False)
-    buffer_size: int = struct.field(pytree_node=False)
-    fill_buffer: int = struct.field(pytree_node=False)
-    batch_size: int = struct.field(pytree_node=False)
-    gradient_steps: int = struct.field(pytree_node=False)
-    normalize_observations: bool = struct.field(pytree_node=False, default=False)
-    skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
+    total_timesteps: int            = struct.field(pytree_node=False, default=10_000)
+    eval_freq: int                  = struct.field(pytree_node=False, default=1_000)
+    num_envs: int                   = struct.field(pytree_node=False, default=1)
+    gradient_steps: int             = struct.field(pytree_node=False, default=1)
+    buffer_size: int                = struct.field(pytree_node=False, default=10_000)
+    fill_buffer: int                = struct.field(pytree_node=False, default=1_000)
+    batch_size: int                 = struct.field(pytree_node=False, default=100)
+    normalize_observations: bool    = struct.field(pytree_node=False, default=False)
+    skip_initial_evaluation: bool   = struct.field(pytree_node=False, default=False)
+    # fmt: on
 
     @property
     def action_low(self):
@@ -57,14 +62,18 @@ class DDPGConfig(struct.PyTreeNode):
 
         config = deepcopy(config)  # Because we're popping from it
 
-        # Get env id and convert to gymnax environment and parameters
-        env_kwargs = config.pop("env_kwargs", {})
-        env_id = config.pop("env")
-        if env_id.startswith("brax"):
-            env = Brax2GymnaxEnv(env_id.split("/")[1], **env_kwargs)
-            env_params = env.default_params
+        if isinstance(config["env"], str):
+            # Get env id and convert to gymnax environment and parameters
+            env_kwargs = config.pop("env_kwargs", {})
+            env_id = config.pop("env")
+            if env_id.startswith("brax"):
+                env = Brax2GymnaxEnv(env_id.split("/")[1], **env_kwargs)
+                env_params = env.default_params
+            else:
+                env, env_params = gymnax.make(env_id, **env_kwargs)
         else:
-            env, env_params = gymnax.make(env_id, **env_kwargs)
+            env = config.pop("env")
+            env_params = config.pop("env_params", env.default_params)
 
         agent_kwargs = config.pop("agent_kwargs", {})
         activation = agent_kwargs.pop("activation", "relu")
@@ -77,7 +86,20 @@ class DDPGConfig(struct.PyTreeNode):
         action_dim = np.prod(env.action_space(env_params).shape)
         agent = DDPGAgent(action_dim, action_range, **agent_kwargs)
 
-        evaluate = make_evaluate(env, env_params, 200)
+        def make_act(config, ts):
+            from rejax.normalize import normalize_obs
+
+            def act(obs, rng):
+                if getattr(config, "normalize_observations", False):
+                    obs = normalize_obs(ts.rms_state, obs)
+
+                obs = jnp.expand_dims(obs, 0)
+                action = config.actor.apply(ts.params, obs, rng, method="act")
+                return jnp.squeeze(action)
+
+            return act
+
+        evaluate = make_evaluate(make_act, env, env_params, 200)
         return cls(
             env_params=env_params,
             agent=agent,

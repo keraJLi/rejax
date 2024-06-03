@@ -80,14 +80,18 @@ class SACConfig(struct.PyTreeNode):
         compatibility and will be deprecated in the future."""
         config = deepcopy(config)  # Because we're popping from it
 
-        # Get env id and convert to gymnax environment and parameters
-        env_kwargs = config.pop("env_kwargs", {})
-        env_id = config.pop("env")
-        if env_id.startswith("brax"):
-            env = Brax2GymnaxEnv(env_id.split("/")[1], **env_kwargs)
-            env_params = env.default_params
+        if isinstance(config["env"], str):
+            # Get env id and convert to gymnax environment and parameters
+            env_kwargs = config.pop("env_kwargs", {})
+            env_id = config.pop("env")
+            if env_id.startswith("brax"):
+                env = Brax2GymnaxEnv(env_id.split("/")[1], **env_kwargs)
+                env_params = env.default_params
+            else:
+                env, env_params = gymnax.make(env_id, **env_kwargs)
         else:
-            env, env_params = gymnax.make(env_id, **env_kwargs)
+            env = config.pop("env")
+            env_params = config.pop("env_params", env.default_params)
 
         action_space = env.action_space(env_params)
         discrete = isinstance(action_space, gymnax.environments.spaces.Discrete)
