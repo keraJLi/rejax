@@ -123,6 +123,10 @@ Single file implementations:
 - [PureJaxRL](https://github.com/luchris429/purejaxrl/) implements PPO, recurrent PPO and DQN
 - [Stoix](https://github.com/EdanToledo/Stoix) features DQN, DDPG, TD3, SAC, PPO, as well as popular extensions and more
 
+## 🏗 Installing rejax
+1. Install via pip: `pip install rejax`
+2. Install from source: `pip install git+https://github.com/keraJLi/rejax`
+
 ## ✍ Cite us!
 ```bibtex
 @misc{rejax, 
