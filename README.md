@@ -47,7 +47,8 @@ If you're new to <strong>rejax</strong> and want to learn more about it,
 - Use `jax.vmap` and `jax.pmap` on the initial seed or hyperparameters to train a whole batch of agents in parallel! 
 
 ```python
-from rejax.algos import get_agent
+import jax
+from rejax import get_agent
 
 # Get train function and initialize config for training
 train_fn, config_cls = get_agent("sac")

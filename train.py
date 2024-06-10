@@ -4,11 +4,11 @@ import jax
 import jax.numpy as jnp
 from matplotlib import pyplot as plt
 
-from rejax import get_algo
+from rejax import get_agent
 
 
 def main(algo_str, config, seed_id, num_seeds, time_fit):
-    train_fn, config_cls = get_algo(algo_str)
+    train_fn, config_cls = get_agent(algo_str)
     old_train_config = config_cls.from_dict(config)
 
     def eval_callback(config, ts, rng):
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         help="Number of seeds to roll out.",
     )
 
-    args, _ = parser.parse_known_args()
+    args = parser.parse_args()
     config = load_config(args.config, True)
     main(
         args.algorithm,
