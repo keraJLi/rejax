@@ -28,8 +28,8 @@ CONFIG = {
 
 wandb.init(project="my-awesome-project", config=CONFIG)
 
-train_fn, config_cls = get_algo("ppo")
-config = config_cls.from_dict(CONFIG)
+algo, config_cls = get_algo("ppo")
+config = config_cls.create(**CONFIG)
 eval_callback = config.eval_callback
 
 
@@ -58,6 +58,6 @@ config = config.replace(eval_callback=wandb_callback)
 
 rng = jax.random.PRNGKey(0)
 print("Compiling...")
-compiled_train = jax.jit(train_fn).lower(config, rng).compile()
+compiled_train = jax.jit(algo.train).lower(config, rng).compile()
 print("Training...")
 compiled_train(config, rng)
