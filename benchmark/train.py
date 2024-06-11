@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from flax import serialization
 
-from rejax.algos import get_agent
+from rejax.algos import get_algo
 from rejax.evaluate import make_evaluate as make_evaluate_vanilla
 
 
@@ -150,14 +150,14 @@ def main(args, config):
         )
 
     # Prepare train function and config
-    train_fn, config_cls = get_agent(args.algorithm)
-    train_config = config_cls.from_dict(config)
+    algo, config_cls = get_algo(args.algorithm)
+    train_config = config_cls.create(**config)
     evaluate = make_evaluate(logger, train_config.env, train_config.env_params)
     train_config = train_config.replace(eval_callback=evaluate)
 
     key = jax.random.PRNGKey(args.global_seed)
     keys = jax.random.split(key, args.num_seeds)
-    vmap_train = jax.jit(jax.vmap(train_fn, in_axes=(None, 0)))
+    vmap_train = jax.jit(jax.vmap(algo.train, in_axes=(None, 0)))
 
     # Time compilation
     start = time.process_time()
