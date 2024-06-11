@@ -23,7 +23,7 @@ POPULATION_SIZE = 10
 EVAL_SEEDS = 10
 
 # Load SAC agent's train function and config
-train_fn, config_cls = get_algo("sac")
+algo, config_cls = get_algo("sac")
 
 # Static parameters, cannot be vmapped (except target_entropy_ratio, which is unused)
 static_params = {
@@ -51,8 +51,8 @@ optim_params = {
 @partial(jax.vmap, in_axes=(0, None))
 @partial(jax.vmap, in_axes=(None, 0))
 def evaluate_fitness(meta_params, rng):
-    config = config_cls.from_dict({**static_params, **meta_params})
-    train_state, (lenghts, returns) = train_fn(config, rng)
+    config = config_cls.create(**static_params, **meta_params)
+    train_state, (lenghts, returns) = algo.train(config, rng)
 
     # Take mean over evaluation seeds and calculate fitness as final return
     fitness = returns.mean(axis=1)[-1]

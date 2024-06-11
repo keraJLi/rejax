@@ -4,13 +4,26 @@ the update of PPO to be the one from "Discovered Policy Optimisation" by Chris L
 (https://arxiv.org/abs/2210.05639). 
 """
 
-
 import jax
 from jax import numpy as jnp
 
 from rejax import PPO, PPOConfig
 
 
+def dpo_drift(ratio, advantages, alpha=2.0, beta=0.6):
+    """Calculate the drift term for DPO, which is part of the loss. Details in paper."""
+    drift1 = jax.nn.relu(
+        (ratio - 1) * advantages - alpha * jnp.tanh((ratio - 1) * advantages / alpha)
+    )
+    drift2 = jax.nn.relu(
+        jnp.log(ratio) * advantages
+        - beta * jnp.tanh(jnp.log(ratio) * advantages / beta)
+    )
+    drift = jnp.where(advantages >= 0, drift1, drift2)
+    return drift
+
+
+# Overwrite PPO to change actor update, modifying the loss function
 class DPO(PPO):
     @classmethod
     def update_actor(cls, config, ts, batch):
@@ -23,21 +36,12 @@ class DPO(PPO):
             )
             entropy = entropy.mean()
 
-            # Calculate actor loss as in DPO
-            alpha, beta = 2, 0.6
+            # Calculate drift and finally actor loss as in DPO
             ratio = jnp.exp(log_prob - batch.trajectories.log_prob)
-            advantages = (batch.advantages - batch.advantages.mean()) / (
-                batch.advantages.std() + 1e-8
-            )
-            drift1 = jax.nn.relu(
-                (ratio - 1) * advantages
-                - alpha * jnp.tanh((ratio - 1) * advantages / alpha),
-            )
-            drift2 = jax.nn.relu(
-                jnp.log(ratio) * advantages
-                - beta * jnp.tanh(jnp.log(ratio) * advantages / beta),
-            )
-            drift = jnp.where(advantages >= 0, drift1, drift2)
+            advantages = batch.advantages
+            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+
+            drift = dpo_drift(ratio, advantages)
             pi_loss = -(ratio * advantages - drift).mean()
 
             return pi_loss - config.ent_coef * entropy
@@ -46,23 +50,21 @@ class DPO(PPO):
         return ts.replace(actor_ts=ts.actor_ts.apply_gradients(grads=grads))
 
 
-config = PPOConfig.from_dict(
-    {
-        "env": "CartPole-v1",
-        "total_timesteps": 250_000,
-        "eval_freq": 5000,
-        "num_envs": 25,
-        "num_steps": 100,
-        "num_epochs": 5,
-        "num_minibatches": 10,
-        "max_grad_norm": 10,
-        "learning_rate": 0.001,
-        "gamma": 0.99,
-        "gae_lambda": 0.95,
-        "clip_eps": 0.2,
-        "ent_coef": 0.01,
-        "vf_coef": 0.5,
-    }
+config = PPOConfig.create(
+    env="Pendulum-v1",
+    total_timesteps=250_000,
+    eval_freq=5000,
+    num_envs=50,
+    num_steps=100,
+    num_epochs=5,
+    num_minibatches=20,
+    max_grad_norm=0.5,
+    learning_rate=0.001,
+    gamma=0.99,
+    gae_lambda=0.95,
+    clip_eps=0.2,
+    ent_coef=0.01,
+    vf_coef=0.5,
 )
 
 eval_callback = config.eval_callback

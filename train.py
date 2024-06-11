@@ -2,14 +2,15 @@ import timeit
 
 import jax
 import jax.numpy as jnp
+import yaml
 from matplotlib import pyplot as plt
 
 from rejax import get_algo
 
 
 def main(algo_str, config, seed_id, num_seeds, time_fit):
-    train_fn, config_cls = get_algo(algo_str)
-    old_train_config = config_cls.from_dict(config)
+    algo, config_cls = get_algo(algo_str)
+    old_train_config = config_cls.create(**config)
 
     def eval_callback(config, ts, rng):
         lengths, returns = old_train_config.eval_callback(config, ts, rng)
@@ -27,7 +28,7 @@ def main(algo_str, config, seed_id, num_seeds, time_fit):
     key = jax.random.PRNGKey(seed_id)
     keys = jax.random.split(key, num_seeds)
 
-    vmap_train = jax.jit(jax.vmap(train_fn, in_axes=(None, 0)))
+    vmap_train = jax.jit(jax.vmap(algo.train, in_axes=(None, 0)))
     _, (_, returns) = vmap_train(train_config, keys)
     print(f"Achieved mean return of {returns.mean(axis=-1)[:, -1]}")
 
@@ -52,8 +53,6 @@ def main(algo_str, config, seed_id, num_seeds, time_fit):
 
 if __name__ == "__main__":
     import argparse
-
-    from mle_logging import load_config
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -85,11 +84,14 @@ if __name__ == "__main__":
         help="Number of seeds to roll out.",
     )
 
-    args, _ = parser.parse_known_args()
-    config = load_config(args.config, True)
+    args = parser.parse_args()
+
+    with open(args.config, "r") as f:
+        config = yaml.safe_load(f.read())[args.algorithm]
+
     main(
         args.algorithm,
-        config[args.algorithm],
+        config,
         args.seed_id,
         args.num_seeds,
         args.time_fit,

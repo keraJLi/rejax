@@ -47,14 +47,14 @@ If you're new to <strong>rejax</strong> and want to learn more about it,
 - Use `jax.vmap` and `jax.pmap` on the initial seed or hyperparameters to train a whole batch of agents in parallel! 
 
 ```python
-from rejax.algos import get_agent
+from rejax import get_algo
 
 # Get train function and initialize config for training
-train_fn, config_cls = get_agent("sac")
+algo, config_cls = get_algo("sac")
 train_config = config_cls.create(env="CartPole-v1", learning_rate=0.001)
 
 # Jit the training function
-jitted_train_fn = jax.jit(train_fn)
+jitted_train_fn = jax.jit(algo.train)
 
 # Vmap training function over 300 initial seeds
 vmapped_train_fn = jax.vmap(jitted_train_fn, in_axes=(None, 0))

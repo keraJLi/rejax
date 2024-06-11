@@ -11,7 +11,7 @@ from rejax import get_algo
 # How many random configurations should we try?
 POPULATION_SIZE = 10
 
-train_fn, config_cls = get_algo("td3")
+algo, config_cls = get_algo("td3")
 
 # Static parameters, cannot be vmapped
 static_params = {
@@ -63,12 +63,12 @@ def sample_config_dict(rng):
 # Vmap to create a population of configurations
 global_rngs = jax.random.split(jax.random.PRNGKey(0), POPULATION_SIZE)
 config_dicts = jax.vmap(sample_config_dict)(global_rngs)
-configs = jax.vmap(lambda c: config_cls.from_dict({**static_params, **c}))(config_dicts)
+configs = jax.vmap(lambda c: config_cls.create(**static_params, **c))(config_dicts)
 
 # Vmap training to parallelize the evaluation of return, which was originally of shape
 # (POPULATION_SIZE, 1, num_eval_seeds), where num_eval_seeds = 200 by default
 print(f"Starting to train {POPULATION_SIZE} agents...")
-_, (_, returns) = jax.vmap(train_fn)(configs, global_rngs)
+_, (_, returns) = jax.jit(jax.vmap(algo.train))(configs, global_rngs)
 returns = returns[:, 0].mean(axis=1)
 
 # Find the best configuration and get its final return and hyperparameter configuration

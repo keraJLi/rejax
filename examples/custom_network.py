@@ -2,16 +2,16 @@
 This example demonstrates how to log to use a custom network.
 """
 
-import distrax
 import jax
 from flax import linen as nn
 from jax import numpy as jnp
 
 from rejax import DQN, DQNConfig
+from rejax.algos.networks import EpsilonGreedyPolicy
 from rejax.evaluate import make_evaluate
 
 
-class ConvDuelingQNet(nn.Module):
+class ConvDuelingQNetwork(nn.Module):
     action_dim: int
 
     @nn.compact
@@ -29,41 +29,35 @@ class ConvDuelingQNet(nn.Module):
 
         return value + advantage
 
-    def q_of(self, obs, action):
+    def take(self, obs, action):
+        """Returns the Q-value of action `action`."""
         q_values = self(obs)
-        return jnp.take_along_axis(q_values, action[:, None], axis=1).squeeze(axis=1)
-
-    def act(self, obs, rng, epsilon=0):
-        q_values = self(obs)
-        action_dist = distrax.EpsilonGreedy(q_values, epsilon)
-        action = action_dist.sample(seed=rng)
-        return action
+        return jnp.take_along_axis(q_values, action[:, None], axis=1).squeeze(1)
 
 
-config = DQNConfig.from_dict(
-    {
-        "env": "Freeway-MinAtar",
-        "total_timesteps": 1_000_000,
-        "eval_freq": 50_000,
-        "gradient_steps": 1,
-        "learning_rate": 0.00025,
-        "max_grad_norm": 10,
-        "batch_size": 32,
-        "num_envs": 50,
-        "buffer_size": 100_000,
-        "fill_buffer": 5_000,
-        "target_update_freq": 1_000,
-        "eps_start": 1.0,
-        "eps_end": 0.1,
-        "exploration_fraction": 0.2,
-        "gamma": 0.99,
-        "ddqn": True,
-    }
+config = DQNConfig.create(
+    env="Freeway-MinAtar",
+    total_timesteps=1_000_000,
+    eval_freq=50_000,
+    gradient_steps=1,
+    learning_rate=0.00025,
+    max_grad_norm=10,
+    batch_size=32,
+    num_envs=50,
+    buffer_size=100_000,
+    fill_buffer=5_000,
+    target_update_freq=1_000,
+    eps_start=1.0,
+    eps_end=0.1,
+    exploration_fraction=0.2,
+    gamma=0.99,
+    ddqn=True,
 )
 
 evaluate = make_evaluate(DQN.make_act, config.env, config.env_params, 10)
 
 
+# Overwrite default evaluation callback to log episode lengths and returns
 def log_callback(config, train_state, rng):
     lengths, returns = evaluate(config, train_state, rng)
     jax.debug.print(
@@ -74,15 +68,14 @@ def log_callback(config, train_state, rng):
         returns.mean(),
         returns.std(),
     )
-    return lengths, returns
+    return ()  # We don't need the results after printing them :-)
 
 
+# We make a policy out of the Q-network to use it as an agent (that has an "act" method)
 action_dim = config.env.action_space(config.env_params).n
-conv_qnet = ConvDuelingQNet(action_dim)
-config = config.replace(eval_callback=log_callback, agent=conv_qnet)
+agent = EpsilonGreedyPolicy(ConvDuelingQNetwork)(action_dim)
 
+# Add custom network to config and train
 rng = jax.random.PRNGKey(0)
-print("Compiling...")
-compiled_train = jax.jit(DQN.train).lower(config, rng).compile()
-print("Training...")
-compiled_train(config, rng)
+config = config.replace(eval_callback=log_callback, agent=agent)
+jax.jit(DQN.train)(config, rng)
