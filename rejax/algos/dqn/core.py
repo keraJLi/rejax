@@ -1,3 +1,4 @@
+import warnings
 from copy import deepcopy
 from typing import Any, Callable
 
@@ -55,12 +56,17 @@ class DQNConfig(struct.PyTreeNode):
     @classmethod
     def create(cls, **kwargs):
         """Create a config object from keyword arguments."""
-        return cls.from_dict(kwargs)
+        return cls._from_dict(kwargs)
 
     @classmethod
     def from_dict(cls, config):
         """Create a config object from a dictionary. Exists mainly for backwards
         compatibility and will be deprecated in the future."""
+        warnings.warn("from_dict is deprecated, use create instead.")
+        return cls._from_dict(config)
+
+    @classmethod
+    def _from_dict(cls, config):
         config = deepcopy(config)  # Because we're popping from it
 
         if isinstance(config["env"], str):

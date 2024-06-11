@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Callable, Tuple
 
 import chex
@@ -5,8 +6,6 @@ from flax import linen as nn
 from flax import struct
 from gymnax.environments.environment import Environment
 from jax import numpy as jnp
-
-from rejax.algos.ddpg.ddpg import DDPG
 
 
 class DDPGConfig(struct.PyTreeNode):
@@ -46,12 +45,17 @@ class DDPGConfig(struct.PyTreeNode):
     @classmethod
     def create(cls, **kwargs):
         """Create a config object from keyword arguments."""
-        return cls.from_dict(kwargs)
+        return cls._from_dict(kwargs)
 
     @classmethod
     def from_dict(cls, config):
         """Create a config object from a dictionary. Exists mainly for backwards
         compatibility and will be deprecated in the future."""
+        warnings.warn("from_dict is deprecated, use create instead.")
+        return cls._from_dict(config)
+
+    @classmethod
+    def _from_dict(cls, config):
         from copy import deepcopy
 
         import gymnax

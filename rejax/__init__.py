@@ -1,3 +1,5 @@
+import warnings
+
 from rejax.algos.ddpg import DDPG, DDPGConfig
 from rejax.algos.dqn import DQN, DQNConfig
 from rejax.algos.ppo import PPO, PPOConfig
@@ -16,6 +18,12 @@ _algos = {
 def get_agent(agent_str):
     """Gets a pair of `(train_fn, config_cls)`. Will be deprecated in the future, exists
     mainly for backwards compatibility."""
+
+    warnings.warn(
+        "get_agent is deprecated and will be removed in the future. "
+        "Use get_algo instead.",
+        DeprecationWarning,
+    )
     algo_cls, config_cls = _algos[agent_str]
     return algo_cls.train, config_cls
 
