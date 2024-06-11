@@ -20,5 +20,6 @@ setup(
         "numpy",
         "brax",
         "evosax",
+        "pyyaml",
     ],
 )
