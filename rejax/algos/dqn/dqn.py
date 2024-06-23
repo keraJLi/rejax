@@ -220,15 +220,14 @@ class DQN(Algorithm):
         return ts, minibatch
 
     @classmethod
-    def update(cls, config, ts, minibatch):
-        action = jnp.expand_dims(minibatch.action, 1)
-        next_q_target_values = config.agent.apply(ts.target_params, minibatch.next_obs)
+    def update(cls, config, ts, mb):
+        next_q_target_values = config.agent.apply(ts.target_params, mb.next_obs)
 
         def vanilla_targets(q_params):
             return jnp.max(next_q_target_values, axis=1)
 
         def ddqn_targets(q_params):
-            next_q_values = config.agent.apply(q_params, minibatch.next_obs)
+            next_q_values = config.agent.apply(q_params, mb.next_obs)
             next_action = jnp.argmax(next_q_values, axis=1, keepdims=True)
             next_q_values_target = jnp.take_along_axis(
                 next_q_target_values, next_action, axis=1
@@ -236,13 +235,12 @@ class DQN(Algorithm):
             return next_q_values_target
 
         def loss_fn(q_params):
-            q_values = config.agent.apply(q_params, minibatch.obs)
-            q_values = jnp.take_along_axis(q_values, action, axis=1).squeeze()
+            q_values = config.agent.apply(q_params, mb.obs, mb.action, method="take")
             next_q_values_target = jax.lax.cond(
                 config.ddqn, ddqn_targets, vanilla_targets, q_params
             )
-            mask_done = jnp.logical_not(minibatch.done)
-            targets = minibatch.reward + mask_done * config.gamma * next_q_values_target
+            mask_done = jnp.logical_not(mb.done)
+            targets = mb.reward + mask_done * config.gamma * next_q_values_target
             loss = optax.l2_loss(q_values, targets).mean()
             return loss
 
