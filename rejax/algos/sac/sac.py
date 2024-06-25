@@ -302,8 +302,8 @@ class SAC(Algorithm):
     @classmethod
     def update_alpha(cls, config, ts, logprob):
         def alpha_loss_fn(params, logprob):
-            log_alpha = params["log_alpha"]
-            loss_alpha = -log_alpha * (logprob + config.target_entropy)
+            alpha = jnp.exp(params["log_alpha"])
+            loss_alpha = -alpha * (logprob + config.target_entropy)
             if config.discrete:
                 loss_alpha = jnp.sum(jnp.exp(logprob) * loss_alpha, axis=1)
             return loss_alpha.mean()
