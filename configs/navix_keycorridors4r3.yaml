@@ -1,0 +1,58 @@
+# None of these configs work (I chose them based on speed, so we fail a little faster)
+
+sac:
+  env: navix/Navix-KeyCorridorS4R3-v0
+  agent_kwargs:
+    activation: relu
+  num_envs: 128
+  buffer_size: 131_072
+  fill_buffer: 8_192
+  batch_size: 128
+  learning_rate: 0.0003
+  gradient_steps: 128
+  total_timesteps: 1_048_576
+  eval_freq: 131_072
+  gamma: 0.8
+  tau: 0.95
+  target_entropy_ratio: 0.4
+  normalize_observations: true
+
+ppo:
+  env: navix/Navix-KeyCorridorS4R3-v0
+  agent_kwargs:
+    activation: tanh
+  num_envs: 128
+  num_steps: 64
+  num_epochs: 4
+  num_minibatches: 1
+  learning_rate: 0.0003
+  max_grad_norm: 10
+  total_timesteps: 1_048_576
+  eval_freq: 262_144
+  gamma: 0.95
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  normalize_observations: true
+
+dqn:
+  env: navix/Navix-KeyCorridorS4R3-v0
+  agent_kwargs:
+    activation: swish
+  num_envs: 128
+  gradient_steps: 128
+  buffer_size: 131_072
+  fill_buffer: 8_192
+  batch_size: 128
+  learning_rate: 0.0003
+  max_grad_norm: 10
+  total_timesteps: 1_048_576
+  eval_freq: 131_072
+  gamma: 0.995
+  eps_start: 1.0
+  eps_end: 0.01
+  exploration_fraction: 0.3
+  target_update_freq: 8_192
+  ddqn: true
+  normalize_observations: false

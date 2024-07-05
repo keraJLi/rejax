@@ -1,0 +1,56 @@
+sac:
+  env: navix/Navix-GoToDoor-6x6-v0
+  agent_kwargs:
+    activation: tanh
+  num_envs: 128
+  buffer_size: 131_072
+  fill_buffer: 8_192
+  batch_size: 256
+  learning_rate: 0.0003
+  gradient_steps: 128
+  total_timesteps: 1_048_576
+  eval_freq: 131_072
+  gamma: 0.9
+  tau: 0.995
+  target_entropy_ratio: 0.9
+  normalize_observations: false
+
+ppo:
+  env: navix/Navix-GoToDoor-6x6-v0
+  agent_kwargs:
+    activation: tanh
+  num_envs: 16
+  num_steps: 128
+  num_epochs: 16
+  num_minibatches: 8
+  learning_rate: 0.0003
+  max_grad_norm: 5
+  total_timesteps: 1_048_576
+  eval_freq: 262_144
+  gamma: 0.99
+  gae_lambda: 0.99
+  clip_eps: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  normalize_observations: true
+
+dqn:
+  env: navix/Navix-GoToDoor-6x6-v0
+  agent_kwargs:
+    activation: swish
+  num_envs: 128
+  gradient_steps: 128
+  buffer_size: 131_072
+  fill_buffer: 8_192
+  batch_size: 1_024
+  learning_rate: 0.0003
+  max_grad_norm: 0.5
+  total_timesteps: 1_048_576
+  eval_freq: 131_072
+  gamma: 0.95
+  eps_start: 1.0
+  eps_end: 0.01
+  exploration_fraction: 0.3
+  target_update_freq: 8_192
+  ddqn: true
+  normalize_observations: true
