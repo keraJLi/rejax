@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from typing import Callable, Tuple, Type
 
 import distrax
+import jax
 from flax import linen as nn
 from flax.linen.initializers import constant
 from jax import numpy as jnp
@@ -194,8 +195,6 @@ class BetaPolicy(nn.Module):
         x = self.features(obs)
         alpha = 1 + nn.softplus(self.alpha(x))
         beta = 1 + nn.softplus(self.beta(x))
-        # import jax
-        # jax.debug.print("{}, {}", alpha, beta)
         return distrax.Beta(alpha, beta)
 
     def action_log_prob(self, obs, rng):
@@ -292,3 +291,39 @@ class DuelingQNetwork(nn.Module):
     def take(self, obs, action):
         q_values = self(obs)
         return jnp.take_along_axis(q_values, action[:, None], axis=1).squeeze(1)
+
+
+class ImplicitQuantileNetwork(nn.Module):
+    hidden_layer_sizes: Sequence[int]
+    activation: Callable
+    action_dim: int
+
+    risk_distortion: Callable = lambda tau: tau
+    # risk_distortion: Callable = lambda tau: tau ** 0.71 / (tau ** 0.71 + (1 - tau) ** 0.71) ** (1 / 0.71)
+
+    @property
+    def embedding_dim(self):
+        return self.hidden_layer_sizes[-1]
+
+    @nn.compact
+    def __call__(self, obs, rng):
+        x = obs.reshape(obs.shape[0], -1)
+        psi = MLP(self.hidden_layer_sizes, self.activation)(x)
+
+        tau = distrax.Uniform(0, 1).sample(seed=rng, sample_shape=obs.shape[0])
+        tau = self.risk_distortion(tau)
+        phi_input = jnp.cos(jnp.pi * jnp.outer(tau, jnp.arange(self.embedding_dim)))
+        phi = nn.relu(nn.Dense(self.embedding_dim)(phi_input))
+
+        x = nn.swish(nn.Dense(64)(psi * phi))
+        return nn.Dense(self.action_dim)(x), tau
+
+    def q(self, obs, rng, num_samples=128):
+        rng = jax.random.split(rng, num_samples)
+        zs, _ = jax.vmap(self, in_axes=(None, 0))(obs, rng)
+        return zs.mean(axis=0)
+
+    def best_action(self, obs, rng, num_samples=64):
+        q = self.q(obs, rng, num_samples)
+        best_action = jnp.argmax(q, axis=1)
+        return best_action
