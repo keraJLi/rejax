@@ -38,6 +38,26 @@ dqn:
   ddqn: true
   normalize_observations: false
 
+iqn:
+  env: CartPole-v1
+  agent_kwargs:
+    activation: swish
+  num_envs: 10
+  buffer_size: 100_000
+  fill_buffer: 1000
+  batch_size: 100
+  max_grad_norm: 10
+  learning_rate: 0.0003
+  gradient_steps: 5
+  total_timesteps: 100_000
+  eval_freq: 5000
+  target_update_freq: 500
+  eps_start: 1
+  eps_end: 0.01
+  exploration_fraction: 0.5
+  gamma: 0.99
+  normalize_observations: false
+
 sac:
   env: CartPole-v1
   agent_kwargs:

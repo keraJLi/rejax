@@ -2,15 +2,17 @@ import warnings
 
 from rejax.algos.ddpg import DDPG, DDPGConfig
 from rejax.algos.dqn import DQN, DQNConfig
+from rejax.algos.iqn import IQN, IQNConfig
 from rejax.algos.ppo import PPO, PPOConfig
 from rejax.algos.sac import SAC, SACConfig
 from rejax.algos.td3 import TD3, TD3Config
 
 _algos = {
-    "ppo": (PPO, PPOConfig),
-    "dqn": (DQN, DQNConfig),
-    "sac": (SAC, SACConfig),
     "ddpg": (DDPG, DDPGConfig),
+    "dqn": (DQN, DQNConfig),
+    "iqn": (IQN, IQNConfig),
+    "ppo": (PPO, PPOConfig),
+    "sac": (SAC, SACConfig),
     "td3": (TD3, TD3Config),
 }
 
@@ -36,14 +38,16 @@ def get_algo(algo):
 __all__ = [
     "get_algo",
     # Algorithms
-    "PPO",
-    "PPOConfig",
-    "DQN",
-    "DQNConfig",
-    "SAC",
-    "SACConfig",
     "DDPG",
     "DDPGConfig",
+    "DQN",
+    "DQNConfig",
+    "IQN",
+    "IQNConfig",
+    "PPO",
+    "PPOConfig",
+    "SAC",
+    "SACConfig",
     "TD3",
     "TD3Config",
 ]
