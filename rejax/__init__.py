@@ -4,6 +4,7 @@ from rejax.algos.ddpg import DDPG, DDPGConfig
 from rejax.algos.dqn import DQN, DQNConfig
 from rejax.algos.iqn import IQN, IQNConfig
 from rejax.algos.ppo import PPO, PPOConfig
+from rejax.algos.pqn import PQN, PQNConfig
 from rejax.algos.sac import SAC, SACConfig
 from rejax.algos.td3 import TD3, TD3Config
 
@@ -12,6 +13,7 @@ _algos = {
     "dqn": (DQN, DQNConfig),
     "iqn": (IQN, IQNConfig),
     "ppo": (PPO, PPOConfig),
+    "pqn": (PQN, PQNConfig),
     "sac": (SAC, SACConfig),
     "td3": (TD3, TD3Config),
 }
@@ -46,6 +48,8 @@ __all__ = [
     "IQNConfig",
     "PPO",
     "PPOConfig",
+    "PQN",
+    "PQNConfig",
     "SAC",
     "SACConfig",
     "TD3",

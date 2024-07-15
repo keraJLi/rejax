@@ -84,3 +84,21 @@ es:
   strategy_kwargs:
     popsize: 50
   num_rollouts: 8
+
+
+pqn:
+  env: Acrobot-v1
+  num_envs: 16
+  num_steps: 128
+  num_minibatches: 16
+  max_grad_norm: 10
+  learning_rate: 0.0003
+  num_epochs: 5
+  total_timesteps: 524288
+  eval_freq: 16384
+  eps_start: 1
+  eps_end: 0.05
+  exploration_fraction: 0.5
+  gamma: 0.99
+  lambda_: 0.9
+  normalize_observations: false
