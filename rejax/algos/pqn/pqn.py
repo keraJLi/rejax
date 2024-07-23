@@ -1,3 +1,10 @@
+"""
+Adapted from https://github.com/mttga/purejaxql/blob/main/purejaxql/pqn_gymnax.py
+by Matteo Gallici et. al.
+Thanks!
+"""
+
+
 from typing import Any
 
 import chex
@@ -206,15 +213,9 @@ class PQN(Algorithm):
     def calculate_targets(cls, config, trajectories, max_last_q):
         def get_target(lambda_return_and_next_q, transition):
             lambda_return, next_q = lambda_return_and_next_q
-            target = (
-                transition.reward.squeeze()  # For gymnax envs that return shape (1, )
-                + config.gamma * next_q * (1 - transition.done)
-            )
-            delta = target - next_q
-            lambda_return = (
-                target
-                + config.gamma * config.lambda_ * (1 - transition.done) * delta
-                + transition.done * transition.reward
+            return_bootstrap = next_q + config.lambda_ * (lambda_return - next_q)
+            lambda_return = transition.reward + (1 - transition.done) * config.gamma * (
+                return_bootstrap
             )
             max_next_q = transition.next_q.max(axis=1)
             return (lambda_return, max_next_q), lambda_return

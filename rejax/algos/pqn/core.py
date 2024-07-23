@@ -1,11 +1,9 @@
 import warnings
 from copy import deepcopy
-from typing import Any, Callable, Type
+from typing import Any, Callable
 
 import chex
-import distrax
 import gymnax
-import jax
 from flax import linen as nn
 from flax import struct
 from gymnax.environments.environment import Environment
@@ -16,6 +14,7 @@ from rejax.algos.networks import DiscreteQNetwork, EpsilonGreedyPolicy
 from rejax.algos.pqn.pqn import PQN
 from rejax.brax2gymnax import Brax2GymnaxEnv
 from rejax.evaluate import make_evaluate
+from rejax.normalize import FloatObsWrapper
 
 
 class PQNConfig(struct.PyTreeNode):
@@ -86,6 +85,9 @@ class PQNConfig(struct.PyTreeNode):
         else:
             env = config.pop("env")
             env_params = config.pop("env_params", env.default_params)
+        
+        if config.get("normalize_observations", False):
+            env = FloatObsWrapper(env)
 
         agent_kwargs = config.pop("agent_kwargs", {})
         agent_kwargs["activation"] = lambda x: nn.relu(nn.LayerNorm()(x))
