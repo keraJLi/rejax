@@ -1,11 +1,11 @@
-import jax
-import chex
-from flax import struct
-from typing import Union
-from jax import numpy as jnp
-from typing import NamedTuple
 from functools import partial
+from typing import NamedTuple, Union
+
+import chex
+import jax
+from flax import struct
 from gymnax.environments import spaces
+from jax import numpy as jnp
 
 
 class CircularBuffer(struct.PyTreeNode):

@@ -1,8 +1,8 @@
-from flax import struct
 from brax.envs import create
-from jax import numpy as jnp
+from flax import struct
 from gymnax.environments import spaces
 from gymnax.environments.environment import Environment as GymnaxEnv
+from jax import numpy as jnp
 
 
 @struct.dataclass

@@ -38,6 +38,51 @@ class SACTrainState(PyTreeNode):
 
 class SAC(Algorithm):
     @classmethod
+    def initialize_network_params(cls, config, rng, obs, tx):
+        rng, rng_actor, rng_critic = jax.random.split(rng, 3)
+        rng_critic = jax.random.split(rng_critic, 2)
+
+        actor_params = config.actor.init(rng_actor, obs, rng_actor)
+        actor_ts = TrainState.create(apply_fn=(), params=actor_params, tx=tx)
+
+        if config.discrete:
+            critic_params = jax.vmap(config.critic.init, in_axes=(0, None))(
+                rng_critic, obs
+            )
+        else:
+            act_ph = jnp.empty((1, *config.env.action_space(config.env_params).shape))
+            critic_params = jax.vmap(config.critic.init, in_axes=(0, None, None))(
+                rng_critic, obs, act_ph
+            )
+        critic_ts = TrainState.create(apply_fn=(), params=critic_params, tx=tx)
+
+        alpha_params = FrozenDict({"log_alpha": jnp.array(0.0)})
+        alpha_ts = TrainState.create(apply_fn=(), params=alpha_params, tx=tx)
+
+        return alpha_ts, actor_ts, critic_ts, critic_params
+
+    @classmethod
+    def create_train_state(cls, config, network_state, env_state, obs, rms_state, rng):
+        alpha_ts, actor_ts, critic_ts, critic_target_params = network_state
+        replay_buffer = ReplayBuffer.empty(
+            size=config.buffer_size,
+            obs_space=config.env.observation_space(config.env_params),
+            action_space=config.env.action_space(config.env_params),
+        )
+        return SACTrainState(
+            alpha_ts=alpha_ts,
+            actor_ts=actor_ts,
+            critic_ts=critic_ts,
+            critic_target_params=critic_target_params,
+            env_state=env_state,
+            last_obs=obs,
+            replay_buffer=replay_buffer,
+            global_step=0,
+            rms_state=rms_state,
+            rng=rng,
+        )
+
+    @classmethod
     def make_act(cls, config, ts):
         def act(obs, rng):
             if getattr(config, "normalize_observations", False):
@@ -48,65 +93,6 @@ class SAC(Algorithm):
             return jnp.squeeze(action)
 
         return act
-
-    @classmethod
-    def initialize_train_state(cls, config, rng):
-        # Initialize optimizer
-        tx = optax.adam(config.learning_rate, eps=1e-5)
-
-        # Initialize network parameters and train states
-        rng, rng_actor, rng_critic = jax.random.split(rng, 3)
-        rng_critic = jax.random.split(rng_critic, 2)
-        obs_ph = jnp.empty((1, *config.env.observation_space(config.env_params).shape))
-        actor_params = config.actor.init(rng_actor, obs_ph, rng_actor)
-        actor_ts = TrainState.create(apply_fn=(), params=actor_params, tx=tx)
-
-        if config.discrete:
-            critic_params = jax.vmap(config.critic.init, in_axes=(0, None))(
-                rng_critic, obs_ph
-            )
-        else:
-            act_ph = jnp.empty((1, *config.env.action_space(config.env_params).shape))
-            critic_params = jax.vmap(config.critic.init, in_axes=(0, None, None))(
-                rng_critic, obs_ph, act_ph
-            )
-        critic_ts = TrainState.create(apply_fn=(), params=critic_params, tx=tx)
-
-        alpha_params = FrozenDict({"log_alpha": jnp.array(0.0)})
-        alpha_ts = TrainState.create(apply_fn=(), params=alpha_params, tx=tx)
-
-        # Initialize environment
-        rng, rng_reset = jax.random.split(rng)
-        rng_reset = jax.random.split(rng_reset, config.num_envs)
-        vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
-        obs, env_state = vmap_reset(rng_reset, config.env_params)
-
-        # Initialize replay buffer
-        replay_buffer = ReplayBuffer.empty(
-            size=config.buffer_size,
-            obs_space=config.env.observation_space(config.env_params),
-            action_space=config.env.action_space(config.env_params),
-        )
-
-        # Initialize observation normalization
-        rms_state = RMSState.create(obs.shape[1:])
-        if config.normalize_observations:
-            rms_state = update_rms(rms_state, obs)
-
-        train_state = SACTrainState(
-            alpha_ts=alpha_ts,
-            actor_ts=actor_ts,
-            critic_ts=critic_ts,
-            critic_target_params=critic_params,
-            env_state=env_state,
-            last_obs=obs,
-            replay_buffer=replay_buffer,
-            global_step=0,
-            rms_state=rms_state,
-            rng=rng,
-        )
-
-        return train_state
 
     @classmethod
     def train(cls, config, rng=None, train_state=None):

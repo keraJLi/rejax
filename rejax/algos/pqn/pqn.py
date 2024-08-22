@@ -16,7 +16,8 @@ from flax.training.train_state import TrainState
 from jax import numpy as jnp
 
 from rejax.algos.algorithm import Algorithm
-from rejax.normalize import RMSState, normalize_obs, update_and_normalize, update_rms
+from rejax.normalize import (RMSState, normalize_obs, update_and_normalize,
+                             update_rms)
 
 
 class Trajectory(PyTreeNode):
@@ -66,29 +67,15 @@ class PQN(Algorithm):
         return act
 
     @classmethod
-    def initialize_train_state(cls, config, rng):
-        rng, rng_agent = jax.random.split(rng)
-        q_params = config.agent.init(
-            rng_agent,
-            jnp.zeros((1, *config.env.observation_space(config.env_params).shape)),
-        )
-        tx = optax.chain(
-            optax.clip_by_global_norm(config.max_grad_norm),
-            optax.adam(config.learning_rate, eps=1e-5),
-        )
+    def initialize_network_params(cls, config, rng, obs, tx):
+        q_params = config.agent.init(rng, jnp.zeros((1, *obs.shape[1:])))
         q_ts = TrainState.create(apply_fn=(), params=q_params, tx=tx)
+        return q_ts
 
-        rng, rng_reset = jax.random.split(rng)
-        rng_reset = jax.random.split(rng_reset, config.num_envs)
-        vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
-        obs, env_state = vmap_reset(rng_reset, config.env_params)
-
-        rms_state = RMSState.create(obs.shape[1:])
-        if config.normalize_observations:
-            rms_state = update_rms(rms_state, obs)
-
-        train_state = PQNTrainState(
-            q_ts=q_ts,
+    @classmethod
+    def create_train_state(cls, config, network_state, env_state, obs, rms_state, rng):
+        return PQNTrainState(
+            q_ts=network_state,
             env_state=env_state,
             last_obs=obs,
             last_done=jnp.zeros(config.num_envs).astype(bool),
@@ -96,8 +83,6 @@ class PQN(Algorithm):
             rms_state=rms_state,
             rng=rng,
         )
-
-        return train_state
 
     @classmethod
     def train(cls, config, rng=None, train_state=None):

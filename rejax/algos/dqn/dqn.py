@@ -47,35 +47,22 @@ class DQN(Algorithm):
         return act
 
     @classmethod
-    def initialize_train_state(cls, config, rng):
+    def initialize_network_params(cls, config, rng, obs, tx):
         rng, rng_agent = jax.random.split(rng)
-        q_params = config.agent.init(
-            rng_agent,
-            jnp.zeros((1, *config.env.observation_space(config.env_params).shape)),
-        )
-        tx = optax.chain(
-            optax.clip_by_global_norm(config.max_grad_norm),
-            optax.adam(config.learning_rate, eps=1e-5),
-        )
+        q_params = config.agent.init(rng_agent, obs)
         q_ts = TrainState.create(apply_fn=(), params=q_params, tx=tx)
         q_target_params = q_params
+        return q_ts, q_target_params
 
-        rng, rng_reset = jax.random.split(rng)
-        rng_reset = jax.random.split(rng_reset, config.num_envs)
-        vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
-        obs, env_state = vmap_reset(rng_reset, config.env_params)
-
+    @classmethod
+    def create_train_state(cls, network_state, env_state, obs, rms_state, rng):
+        q_ts, q_target_params = network_state
         replay_buffer = ReplayBuffer.empty(
             size=config.buffer_size,
             obs_space=config.env.observation_space(config.env_params),
             action_space=config.env.action_space(config.env_params),
         )
-
-        rms_state = RMSState.create(obs.shape[1:])
-        if config.normalize_observations:
-            rms_state = update_rms(rms_state, obs)
-
-        train_state = DQNTrainState(
+        return DQNTrainState(
             q_ts=q_ts,
             target_params=q_target_params,
             env_state=env_state,
@@ -85,8 +72,6 @@ class DQN(Algorithm):
             rms_state=rms_state,
             rng=rng,
         )
-
-        return train_state
 
     @classmethod
     def train(cls, config, rng=None, train_state=None):

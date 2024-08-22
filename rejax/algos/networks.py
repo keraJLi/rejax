@@ -318,7 +318,7 @@ class ImplicitQuantileNetwork(nn.Module):
         x = nn.swish(nn.Dense(64)(psi * phi))
         return nn.Dense(self.action_dim)(x), tau
 
-    def q(self, obs, rng, num_samples=128):
+    def q(self, obs, rng, num_samples=64):
         rng = jax.random.split(rng, num_samples)
         zs, _ = jax.vmap(self, in_axes=(None, 0))(obs, rng)
         return zs.mean(axis=0)

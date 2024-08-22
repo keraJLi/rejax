@@ -50,64 +50,32 @@ class TD3TrainState(struct.PyTreeNode):
 
 class TD3(Algorithm):
     @classmethod
-    def make_act(cls, config, ts):
-        def act(obs, rng):
-            if getattr(config, "normalize_observations", False):
-                obs = normalize_obs(ts.rms_state, obs)
-
-            obs = jnp.expand_dims(obs, 0)
-            action = config.actor.apply(ts.params, obs, rng, method="act")
-            return jnp.squeeze(action)
-
-        return act
-
-    @classmethod
-    def initialize_train_state(cls, config, rng):
-        # Initialize optimizer
-        tx = optax.chain(
-            optax.clip_by_global_norm(config.max_grad_norm),
-            optax.adam(config.learning_rate, eps=1e-5),
-        )
-
-        # Initialize network parameters and train states
-        rng, rng_critic, rng_pi = jax.random.split(rng, 3)
+    def initialize_network_params(cls, config, rng, obs, tx):
+        rng, rng_actor, rng_critic = jax.random.split(rng, 3)
         rng_critic = jax.random.split(rng_critic, 2)
-        obs_ph = jnp.zeros((1, *config.env.observation_space(config.env_params).shape))
-
         act_ph = jnp.zeros((1, *config.env.action_space(config.env_params).shape))
-        actor_params = config.actor.init(rng_pi, obs_ph)
-        actor_target_params = actor_params
+
+        actor_params = config.actor.init(rng_actor, obs)
         actor_ts = TrainState.create(
-            apply_fn=config.actor.apply,
-            params=actor_params,
-            tx=tx,
+            apply_fn=config.actor.apply, params=actor_params, tx=tx
         )
 
         critic_params = jax.vmap(config.critic.init, in_axes=(0, None, None))(
-            rng_critic, obs_ph, act_ph
+            rng_critic, obs, act_ph
         )
-        critic_target_params = critic_params
         critic_ts = TrainState.create(apply_fn=(), params=critic_params, tx=tx)
 
-        # Initialize environment
-        rng, rng_reset = jax.random.split(rng)
-        rng_reset = jax.random.split(rng_reset, config.num_envs)
-        vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
-        obs, env_state = vmap_reset(rng_reset, config.env_params)
+        return actor_ts, critic_ts, actor_params, critic_params
 
-        # Initialize replay buffer
+    @classmethod
+    def create_train_state(cls, config, network_state, env_state, obs, rms_state, rng):
+        actor_ts, critic_ts, actor_target_params, critic_target_params = network_state
         replay_buffer = ReplayBuffer.empty(
             size=config.buffer_size,
             obs_space=config.env.observation_space(config.env_params),
             action_space=config.env.action_space(config.env_params),
         )
-
-        # Initialize observation normalization
-        rms_state = RMSState.create(obs.shape[1:])
-        if config.normalize_observations:
-            rms_state = update_rms(rms_state, obs)
-
-        train_state = TD3TrainState(
+        return TD3TrainState(
             actor_ts=actor_ts,
             actor_target_params=actor_target_params,
             critic_ts=critic_ts,
@@ -120,7 +88,17 @@ class TD3(Algorithm):
             rng=rng,
         )
 
-        return train_state
+    @classmethod
+    def make_act(cls, config, ts):
+        def act(obs, rng):
+            if getattr(config, "normalize_observations", False):
+                obs = normalize_obs(ts.rms_state, obs)
+
+            obs = jnp.expand_dims(obs, 0)
+            action = config.actor.apply(ts.params, obs, rng, method="act")
+            return jnp.squeeze(action)
+
+        return act
 
     @classmethod
     def train(cls, config, rng=None, train_state=None):

@@ -64,34 +64,18 @@ class PPO(Algorithm):
         return act
 
     @classmethod
-    def initialize_train_state(cls, config, rng):
-        # Initialize optimizer
-        tx = optax.chain(
-            optax.clip_by_global_norm(config.max_grad_norm),
-            optax.adam(config.learning_rate, eps=1e-5),
-        )
-
-        # Initialize network parameters and train states
+    def initialize_network_params(cls, config, rng, obs, tx):
         rng, rng_actor, rng_critic = jax.random.split(rng, 3)
-        obs_ph = jnp.empty((1, *config.env.observation_space(config.env_params).shape))
-
-        actor_params = config.actor.init(rng_actor, obs_ph, rng_actor)
+        actor_params = config.actor.init(rng_actor, obs, rng_actor)
         actor_ts = TrainState.create(apply_fn=(), params=actor_params, tx=tx)
-        critic_params = config.critic.init(rng_critic, obs_ph)
+        critic_params = config.critic.init(rng_critic, obs)
         critic_ts = TrainState.create(apply_fn=(), params=critic_params, tx=tx)
+        return actor_ts, critic_ts
 
-        # Initialize environment
-        rngs = jax.random.split(rng, config.num_envs + 1)
-        rng, env_rng = rngs[0], rngs[1:]
-        vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
-        obs, env_state = vmap_reset(env_rng, config.env_params)
-
-        # Initialize observation normalization
-        rms_state = RMSState.create(obs.shape[1:])
-        if config.normalize_observations:
-            rms_state, obs = update_and_normalize(rms_state, obs)
-
-        train_state = PPOTrainState(
+    @classmethod
+    def create_train_state(cls, config, network_state, env_state, obs, rms_state, rng):
+        actor_ts, critic_ts = network_state
+        return PPOTrainState(
             actor_ts=actor_ts,
             critic_ts=critic_ts,
             env_state=env_state,
@@ -101,7 +85,6 @@ class PPO(Algorithm):
             rms_state=rms_state,
             rng=rng,
         )
-        return train_state
 
     @classmethod
     def train(cls, config, rng=None, train_state=None):
