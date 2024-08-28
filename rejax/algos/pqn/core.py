@@ -19,7 +19,7 @@ from rejax.evaluate import make_evaluate
 from rejax.normalize import FloatObsWrapper
 
 
-class PQNConfig(EpsilonGreedyMixin, ReplayBufferMixin, BaseConfig):
+class PQNConfig(EpsilonGreedyMixin, BaseConfig):
     agent: nn.Module = struct.field(pytree_node=False, default=None)
     lambda_: chex.Scalar = struct.field(pytree_node=True, default=0.9)
     num_envs: int = struct.field(pytree_node=False, default=16)

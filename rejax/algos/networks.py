@@ -299,6 +299,7 @@ class ImplicitQuantileNetwork(nn.Module):
     action_dim: int
 
     risk_distortion: Callable = lambda tau: tau
+    # risk_distortion: Callable = lambda tau: 0.8 * tau
     # risk_distortion: Callable = lambda tau: tau ** 0.71 / (tau ** 0.71 + (1 - tau) ** 0.71) ** (1 / 0.71)
 
     @property
@@ -311,6 +312,7 @@ class ImplicitQuantileNetwork(nn.Module):
         psi = MLP(self.hidden_layer_sizes, self.activation)(x)
 
         tau = distrax.Uniform(0, 1).sample(seed=rng, sample_shape=obs.shape[0])
+        # tau = distrax.Uniform(0, 1).sample(seed=rng, sample_shape=(obs.shape[0], 3)).mean(axis=1)
         tau = self.risk_distortion(tau)
         phi_input = jnp.cos(jnp.pi * jnp.outer(tau, jnp.arange(self.embedding_dim)))
         phi = nn.relu(nn.Dense(self.embedding_dim)(phi_input))
@@ -318,12 +320,12 @@ class ImplicitQuantileNetwork(nn.Module):
         x = nn.swish(nn.Dense(64)(psi * phi))
         return nn.Dense(self.action_dim)(x), tau
 
-    def q(self, obs, rng, num_samples=64):
+    def q(self, obs, rng, num_samples=32):
         rng = jax.random.split(rng, num_samples)
         zs, _ = jax.vmap(self, in_axes=(None, 0))(obs, rng)
         return zs.mean(axis=0)
 
-    def best_action(self, obs, rng, num_samples=64):
+    def best_action(self, obs, rng, num_samples=32):
         q = self.q(obs, rng, num_samples)
         best_action = jnp.argmax(q, axis=1)
         return best_action

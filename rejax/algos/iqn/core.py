@@ -45,7 +45,7 @@ class IQNConfig(EpsilonGreedyMixin, ReplayBufferMixin, BaseConfig):
     # Static parameters
     num_envs: int                   = struct.field(pytree_node=False, default=1)
     gradient_steps: int             = struct.field(pytree_node=False, default=1)
-    num_tau_samples: int            = struct.field(pytree_node=False, default=63)
+    num_tau_samples: int            = struct.field(pytree_node=False, default=64)
     num_tau_prime_samples: int      = struct.field(pytree_node=False, default=64)
     normalize_observations: bool    = struct.field(pytree_node=False, default=False)
     # fmt: on

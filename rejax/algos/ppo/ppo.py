@@ -4,7 +4,6 @@ import chex
 import gymnax
 import jax
 import numpy as np
-import optax
 from flax.struct import PyTreeNode
 from flax.training.train_state import TrainState
 from jax import numpy as jnp

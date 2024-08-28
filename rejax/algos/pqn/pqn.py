@@ -4,7 +4,6 @@ by Matteo Gallici et. al.
 Thanks!
 """
 
-
 from typing import Any
 
 import chex
@@ -16,8 +15,7 @@ from flax.training.train_state import TrainState
 from jax import numpy as jnp
 
 from rejax.algos.algorithm import Algorithm
-from rejax.normalize import (RMSState, normalize_obs, update_and_normalize,
-                             update_rms)
+from rejax.normalize import RMSState, normalize_obs, update_and_normalize
 
 
 class Trajectory(PyTreeNode):
