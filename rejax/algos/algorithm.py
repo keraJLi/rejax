@@ -1,50 +1,109 @@
+from copy import deepcopy
+from dataclasses import asdict
+from typing import Any, Callable
+
+import chex
+import gymnax
 import jax
-import optax
-from flax.struct import PyTreeNode
+from flax import struct
+from gymnax.environments.environment import Environment
+from jax import numpy as jnp
 
-from rejax.normalize import RMSState, update_rms
+from rejax.compat import create
+from rejax.evaluate import evaluate
+
+INIT_REGISTRATION_KEY = "_rejax_registered_init"
 
 
-class Algorithm:
+def register_init(func):
+    setattr(func, INIT_REGISTRATION_KEY, True)
+    return func
+
+
+class Algorithm(struct.PyTreeNode):
+    env: Environment = struct.field(pytree_node=False)
+    env_params: Any = struct.field(pytree_node=True)
+    eval_callback: Callable = struct.field(pytree_node=False)
+    eval_freq: int = struct.field(pytree_node=False, default=10_000)
+    skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
+
+    # Common parameters (excluding algorithm-specific ones)
+    total_timesteps: int = struct.field(pytree_node=False, default=100000)
+    learning_rate: chex.Scalar = struct.field(pytree_node=True, default=0.005)
+    gamma: chex.Scalar = struct.field(pytree_node=True, default=0.99)
+    max_grad_norm: chex.Scalar = struct.field(pytree_node=True, default=jnp.inf)
+
     @classmethod
-    def initialize_train_state(cls, config, rng):
-        # Initialize optimizer
-        tx = optax.chain(
-            optax.clip_by_global_norm(config.max_grad_norm),
-            optax.adam(config.learning_rate, eps=1e-5),
+    def create(cls, **config):
+        config = deepcopy(config)
+        env, env_params = cls.create_env(config)
+        agent = cls.create_agent(config, env, env_params)
+
+        def eval_callback(algo, ts, rng):
+            act = algo.make_act(ts)
+            max_steps = algo.env_params.max_steps_in_episode
+            return evaluate(act, rng, env, env_params, 200, max_steps)
+
+        return cls(
+            env=env,
+            env_params=env_params,
+            eval_callback=eval_callback,
+            **agent,
+            **config,
         )
 
-        # Initialize environment
-        rng, env_rng = jax.random.split(rng)
-        vmap_reset = jax.vmap(config.env.reset, in_axes=(0, None))
-        obs, env_state = vmap_reset(
-            jax.random.split(env_rng, config.num_envs), config.env_params
-        )
+    def init_state(self, rng: chex.PRNGKey) -> Any:
+        state_values = {}
+        for name in dir(self):
+            func = getattr(self, name)
+            if getattr(func, INIT_REGISTRATION_KEY, False):
+                rng, rng_init = jax.random.split(rng, 2)
+                state_values.update(func(rng_init))
 
-        # Initialize observation normalization
-        rms_state = RMSState.create(obs.shape[1:])
-        if config.normalize_observations:
-            rms_state = update_rms(rms_state, obs)
+        cls_name = f"{self.__class__.__name__}State"
+        state = {k: struct.field(pytree_node=True) for k in state_values.keys()}
+        state_hints = {k: type(v) for k, v in state_values.items()}
+        d = {**state, "__annotations__": state_hints}
+        clz = type(cls_name, (struct.PyTreeNode,), d)
+        return clz(**state_values)
 
-        # Initialize network parameters and train states
-        rng, network_rng = jax.random.split(rng)
-        network_state = cls.initialize_network_params(config, network_rng, obs, tx)
+    @register_init
+    def init_base_state(self, rng: chex.PRNGKey):
+        return {"rng": rng}
 
-        # Combine everything into a final train state
-        return cls.create_train_state(
-            config, network_state, env_state, obs, rms_state, rng
-        )
+    @staticmethod
+    def create_env(config):
+        if isinstance(config["env"], str):
+            env, env_params = create(config.pop("env"), **config.pop("env_params", {}))
+        else:
+            env = config.pop("env")
+            env_params = config.pop("env_params", env.default_params)
+        return env, env_params
 
-    @classmethod
-    def initialize_network_params(cls, config, rng, obs, tx):
-        # This method should be implemented by each algorithm
+    @staticmethod
+    def create_agent(config, env, env_params):
         raise NotImplementedError
 
-    @classmethod
-    def create_train_state(cls, config, network_state, env_state, obs, rms_state, rng):
-        # This method should be implemented by each algorithm
-        raise NotImplementedError
+    @property
+    def discrete(self):
+        action_space = self.env.action_space(self.env_params)
+        return isinstance(action_space, gymnax.environments.spaces.Discrete)
 
-    @classmethod
-    def train(cls, config, rng):
-        raise NotImplementedError
+    @property
+    def action_dim(self):
+        action_space = self.env.action_space(self.env_params)
+        if self.discrete:
+            return action_space.n
+        return jnp.prod(jnp.array(action_space.shape))
+
+    @property
+    def action_space(self):
+        return self.env.action_space(self.env_params)
+
+    @property
+    def obs_space(self):
+        return self.env.observation_space(self.env_params)
+
+    @property
+    def config(self):
+        return asdict(self)
