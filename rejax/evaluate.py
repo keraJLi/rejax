@@ -87,8 +87,8 @@ def make_evaluate(make_act, env, env_params, num_seeds, max_steps_in_episode=Non
     if max_steps_in_episode is None:
         max_steps_in_episode = env_params.max_steps_in_episode
 
-    def _evaluate(config, ts, rng):
-        act = make_act(config, ts)
+    def _evaluate(algo, ts, rng):
+        act = make_act(algo, ts)
         return evaluate(act, rng, env, env_params, num_seeds, max_steps_in_episode)
 
     return _evaluate
