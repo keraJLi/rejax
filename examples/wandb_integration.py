@@ -1,15 +1,15 @@
 """
 This example demonstrates how to log to wandb during training.
 """
+
 import jax
-from jax import numpy as jnp
 
 import wandb
-from rejax import get_algo
+from rejax import PPO
 
 CONFIG = {
     "env": "brax/ant",
-    "env_kwargs": {"backend": "positional"},
+    "env_params": {"backend": "positional"},
     "agent_kwargs": {"activation": "relu"},
     "total_timesteps": 10_000_000,
     "eval_freq": 100_000,
@@ -28,13 +28,12 @@ CONFIG = {
 
 wandb.init(project="my-awesome-project", config=CONFIG)
 
-algo, config_cls = get_algo("ppo")
-config = config_cls.create(**CONFIG)
-eval_callback = config.eval_callback
+ppo = PPO.create(**CONFIG)
+eval_callback = ppo.eval_callback
 
 
-def wandb_callback(config, train_state, rng):
-    lengths, returns = eval_callback(config, train_state, rng)
+def wandb_callback(ppo, train_state, rng):
+    lengths, returns = eval_callback(ppo, train_state, rng)
 
     def log(step, data):
         # io_callback returns np.array, which wandb does not like.
@@ -51,13 +50,13 @@ def wandb_callback(config, train_state, rng):
 
     # Since we log to wandb, we don't want to return anything that is collected
     # throughout training
-    return jnp.array(())
+    return ()
 
 
-config = config.replace(eval_callback=wandb_callback)
+ppo = ppo.replace(eval_callback=wandb_callback)
 
 rng = jax.random.PRNGKey(0)
 print("Compiling...")
-compiled_train = jax.jit(algo.train).lower(config, rng).compile()
+compiled_train = jax.jit(ppo.train).lower(rng).compile()
 print("Training...")
-compiled_train(config, rng)
+compiled_train(rng)
