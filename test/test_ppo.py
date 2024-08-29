@@ -2,7 +2,7 @@ import unittest
 
 import jax
 
-from rejax import PPO, PPOConfig
+from rejax import PPO
 
 from .environments import (
     TestEnv1Continuous,
@@ -26,26 +26,26 @@ class TestEnvironmentsPPO(unittest.TestCase):
         "skip_initial_evaluation": True,
     }
 
-    def train_fn(self, config):
-        return PPO.train(config, rng=jax.random.PRNGKey(0))
+    def train_fn(self, ppo):
+        return PPO.train(ppo, rng=jax.random.PRNGKey(0))
 
     def test_env1(self):
         for discrete, env in enumerate([TestEnv1Continuous(), TestEnv1Discrete()]):
             with self.subTest(discrete=bool(discrete)):
-                config = PPOConfig.create(env=env, **self.args)
-                ts, _ = self.train_fn(config)
-                value = config.critic.apply(ts.critic_ts.params, jax.numpy.array([0]))
+                ppo = PPO.create(env=env, **self.args)
+                ts, _ = self.train_fn(ppo)
+                value = ppo.critic.apply(ts.critic_ts.params, jax.numpy.array([0]))
                 self.assertAlmostEqual(value, 1.0, delta=0.1)
 
     def test_env2(self):
         for discrete, env in enumerate([TestEnv2Continuous(), TestEnv2Discrete()]):
             with self.subTest(discrete=bool(discrete)):
-                config = PPOConfig.create(env=env, **self.args)
-                ts, _ = self.train_fn(config)
+                ppo = PPO.create(env=env, **self.args)
+                ts, _ = self.train_fn(ppo)
 
                 obs = jax.numpy.array([-1, 1])
                 rew = obs
-                value = config.critic.apply(ts.critic_ts.params, obs)
+                value = ppo.critic.apply(ts.critic_ts.params, obs)
 
                 for v, r in zip(value, rew):
                     self.assertAlmostEqual(v, r, delta=0.1)
@@ -53,12 +53,12 @@ class TestEnvironmentsPPO(unittest.TestCase):
     def test_env3(self):
         for discrete, env in enumerate([TestEnv3Continuous(), TestEnv3Discrete()]):
             with self.subTest(discrete=bool(discrete)):
-                config = PPOConfig.create(env=env, **self.args)
-                ts, _ = self.train_fn(config)
+                ppo = PPO.create(env=env, **self.args)
+                ts, _ = self.train_fn(ppo)
 
                 obs = jax.numpy.array([-1, 1])
-                rew = jax.numpy.array([1 * config.gamma, 1])
-                value = config.critic.apply(ts.critic_ts.params, obs)
+                rew = jax.numpy.array([1 * ppo.gamma, 1])
+                value = ppo.critic.apply(ts.critic_ts.params, obs)
 
                 for v, r in zip(value, rew):
                     self.assertAlmostEqual(v, r, delta=0.1)
@@ -66,14 +66,14 @@ class TestEnvironmentsPPO(unittest.TestCase):
     def test_env4(self):
         for discrete, env in enumerate([TestEnv4Continuous(), TestEnv4Discrete()]):
             with self.subTest(discrete=bool(discrete)):
-                config = PPOConfig.create(env=env, **self.args)
-                ts, _ = self.train_fn(config)
+                ppo = PPO.create(env=env, **self.args)
+                ts, _ = self.train_fn(ppo)
 
                 best_action = jax.numpy.array(1.0 if discrete else 2.0)
-                value = config.critic.apply(ts.critic_ts.params, jax.numpy.array([0]))
+                value = ppo.critic.apply(ts.critic_ts.params, jax.numpy.array([0]))
                 self.assertAlmostEqual(value, best_action, delta=0.1)
 
-                act = PPO.make_act(config, ts)
+                act = PPO.make_act(ppo, ts)
                 rngs = jax.random.split(jax.random.PRNGKey(0), 10)
                 actions = jax.vmap(act, in_axes=(None, 0))(jax.numpy.array([0]), rngs)
 
@@ -83,18 +83,21 @@ class TestEnvironmentsPPO(unittest.TestCase):
     def test_env5(self):
         for discrete, env in enumerate([TestEnv5Continuous(), TestEnv5Discrete()]):
             with self.subTest(discrete=bool(discrete)):
-                config = PPOConfig.create(env=env, **self.args)
-                ts, _ = self.train_fn(config)
+                ppo = PPO.create(env=env, **self.args)
+                ts, _ = self.train_fn(ppo)
 
                 rng = jax.random.PRNGKey(0)
-                obs = jax.random.uniform(rng, (10, 1), minval=-1, maxval=1)
+                if not discrete:
+                    obs = jax.random.uniform(rng, (10, 1), minval=-1, maxval=1)
+                else:
+                    obs = 2 * jax.random.bernoulli(rng, shape=(10, 1)) - 1
 
                 if not discrete:
-                    value = config.critic.apply(ts.critic_ts.params, obs)
+                    value = ppo.critic.apply(ts.critic_ts.params, obs)
                     for v in value:
                         self.assertAlmostEqual(v, 0.0, delta=0.1)
 
-                act = PPO.make_act(config, ts)
+                act = PPO.make_act(ppo, ts)
                 rngs = jax.random.split(rng, 10)
                 actions = jax.vmap(act)(obs, rngs)
 

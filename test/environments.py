@@ -297,7 +297,7 @@ class TestEnvParams4(PyTreeNode):
 
 class TestEnv4Continuous(Environment):
     """
-    Two actions, zero observation, one timestep long, action-dependent +1/-1 reward
+    Two actions, zero observation, one timestep long, action-dependent reward
     """
     def __init__(self):
         super().__init__()
@@ -337,7 +337,7 @@ class TestEnv4Continuous(Environment):
 
 class TestEnv4Discrete(Environment):
     """
-    Two actions, zero observation, one timestep long, action-dependent +1/-1 reward
+    Two actions, zero observation, one timestep long, action-dependent reward
     """
     def __init__(self):
         super().__init__()
