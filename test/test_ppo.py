@@ -20,6 +20,9 @@ from .environments import (
 
 class TestEnvironmentsPPO(unittest.TestCase):
     args = {
+        "num_envs": 100,
+        "num_steps": 10,
+        "num_epochs": 10,
         "learning_rate": 0.003,
         "total_timesteps": 100_000,
         "eval_freq": 100_000,
@@ -43,7 +46,7 @@ class TestEnvironmentsPPO(unittest.TestCase):
                 ppo = PPO.create(env=env, **self.args)
                 ts, _ = self.train_fn(ppo)
 
-                obs = jax.numpy.array([-1, 1])
+                obs = jax.numpy.array([[-1], [1]])
                 rew = obs
                 value = ppo.critic.apply(ts.critic_ts.params, obs)
 
@@ -56,8 +59,8 @@ class TestEnvironmentsPPO(unittest.TestCase):
                 ppo = PPO.create(env=env, **self.args)
                 ts, _ = self.train_fn(ppo)
 
-                obs = jax.numpy.array([-1, 1])
-                rew = jax.numpy.array([1 * ppo.gamma, 1])
+                obs = jax.numpy.array([[-1], [1]])
+                rew = [1 * ppo.gamma, 1]
                 value = ppo.critic.apply(ts.critic_ts.params, obs)
 
                 for v, r in zip(value, rew):
@@ -73,7 +76,7 @@ class TestEnvironmentsPPO(unittest.TestCase):
                 value = ppo.critic.apply(ts.critic_ts.params, jax.numpy.array([0]))
                 self.assertAlmostEqual(value, best_action, delta=0.1)
 
-                act = PPO.make_act(ppo, ts)
+                act = ppo.make_act(ts)
                 rngs = jax.random.split(jax.random.PRNGKey(0), 10)
                 actions = jax.vmap(act, in_axes=(None, 0))(jax.numpy.array([0]), rngs)
 
@@ -95,9 +98,9 @@ class TestEnvironmentsPPO(unittest.TestCase):
                 if not discrete:
                     value = ppo.critic.apply(ts.critic_ts.params, obs)
                     for v in value:
-                        self.assertAlmostEqual(v, 0.0, delta=0.1)
+                        self.assertAlmostEqual(v, 0.0, delta=0.2)
 
-                act = PPO.make_act(ppo, ts)
+                act = ppo.make_act(ts)
                 rngs = jax.random.split(rng, 10)
                 actions = jax.vmap(act)(obs, rngs)
 

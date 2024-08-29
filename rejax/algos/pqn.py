@@ -13,8 +13,11 @@ from flax.training.train_state import TrainState
 from jax import numpy as jnp
 
 from rejax.algos.algorithm import Algorithm, register_init
-from rejax.algos.mixins import (EpsilonGreedyMixin, NormalizeObservationsMixin,
-                                OnPolicyMixin)
+from rejax.algos.mixins import (
+    EpsilonGreedyMixin,
+    NormalizeObservationsMixin,
+    OnPolicyMixin,
+)
 from rejax.networks import DiscreteQNetwork, EpsilonGreedyPolicy
 from rejax.normalize import FloatObsWrapper
 
