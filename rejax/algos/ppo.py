@@ -37,6 +37,9 @@ class PPO(OnPolicyMixin, NormalizeObservationsMixin, Algorithm):
     ent_coef: chex.Scalar = struct.field(pytree_node=True, default=0.01)
     vf_coef: chex.Scalar = struct.field(pytree_node=True, default=0.5)
 
+    # Overwrite default params
+    num_envs: int = struct.field(pytree_node=False, default=100)
+
     def make_act(self, ts):
         def act(obs, rng):
             if getattr(self, "normalize_observations", False):

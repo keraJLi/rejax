@@ -24,7 +24,7 @@ class EpsilonGreedyMixin(struct.PyTreeNode):
 
 
 class VectorizedEnvMixin(struct.PyTreeNode):
-    num_envs: int = struct.field(pytree_node=False, default=100)
+    num_envs: int = struct.field(pytree_node=False, default=1)
 
     @property
     def vmap_reset(self):

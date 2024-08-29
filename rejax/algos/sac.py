@@ -32,7 +32,7 @@ class SAC(
 ):
     actor: nn.Module = struct.field(pytree_node=False, default=None)
     critic: nn.Module = struct.field(pytree_node=False, default=None)
-    num_critics: int = struct.field(pytree_node=False, default=10)
+    num_critics: int = struct.field(pytree_node=False, default=2)
     num_epochs: int = struct.field(pytree_node=False, default=1)
     target_entropy_ratio: chex.Scalar = struct.field(pytree_node=True, default=0.98)
 
