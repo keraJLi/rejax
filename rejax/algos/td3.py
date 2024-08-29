@@ -8,10 +8,24 @@ from flax.training.train_state import TrainState
 from jax import numpy as jnp
 
 from rejax.algos.algorithm import Algorithm, register_init
-from rejax.algos.mixins import (NormalizeObservationsMixin, ReplayBufferMixin,
-                                TargetNetworkMixin)
+from rejax.algos.mixins import (
+    NormalizeObservationsMixin,
+    ReplayBufferMixin,
+    TargetNetworkMixin,
+)
 from rejax.buffers import Minibatch
 from rejax.networks import DeterministicPolicy, QNetwork
+
+# Algorithm outline
+# num_eval_iterations = total_timesteps / eval_freq
+# num_train_iterations = eval_freq / (num_envs * policy_delay)
+# for _ in range(num_eval_iterations):
+#   for _ in range(num_train_iterations):
+#     for _ in range(policy_delay):
+#       M = collect num_gradient_steps minibatches
+#       update critic using M
+#     update actor using M
+#     update target networks
 
 
 class TD3(
@@ -36,8 +50,7 @@ class TD3(
 
             obs = jnp.expand_dims(obs, 0)
             action = self.actor.apply(ts.actor_ts.params, obs)
-            noise = jax.random.normal(rng, action.shape) * self.exploration_noise
-            return jnp.squeeze(jnp.clip(action + noise, -1, 1))
+            return jnp.squeeze(action)
 
         return act
 
@@ -87,6 +100,45 @@ class TD3(
     @property
     def vmap_critic(self):
         return jax.vmap(self.critic.apply, in_axes=(0, None, None))
+
+    def train(self, rng=None, train_state=None):
+        if train_state is None and rng is None:
+            raise ValueError("Either train_state or rng must be provided")
+
+        ts = train_state or self.init_state(rng)
+
+        if not self.skip_initial_evaluation:
+            initial_evaluation = self.eval_callback(self, ts, ts.rng)
+
+        def eval_iteration(ts, unused):
+            # Run a few trainig iterations
+            steps_per_train_it = self.num_envs * self.policy_delay
+            num_train_its = np.ceil(self.eval_freq / steps_per_train_it).astype(int)
+            ts = jax.lax.fori_loop(
+                0,
+                num_train_its,
+                lambda _, ts: self.train_iteration(ts),
+                ts,
+            )
+
+            # Run evaluation
+            return ts, self.eval_callback(self, ts, ts.rng)
+
+        ts, evaluation = jax.lax.scan(
+            eval_iteration,
+            ts,
+            None,
+            np.ceil(self.total_timesteps / self.eval_freq).astype(int),
+        )
+
+        if not self.skip_initial_evaluation:
+            evaluation = jax.tree_map(
+                lambda i, ev: jnp.concatenate((jnp.expand_dims(i, 0), ev)),
+                initial_evaluation,
+                evaluation,
+            )
+
+        return ts, evaluation
 
     def train_iteration(self, ts):
         old_global_step = ts.global_step
