@@ -1,6 +1,5 @@
 ppo:
   env: MountainCarContinuous-v0
-  env_kwargs: null
   agent_kwargs:
     activation: relu
   num_envs: 5
@@ -27,17 +26,16 @@ sac:
   fill_buffer: 256
   batch_size: 256
   learning_rate: 0.005
-  gradient_steps: 32
+  num_epochs: 32
   total_timesteps: 50_000
   eval_freq: 5_000
   gamma: 0.99
-  tau: 0.99
+  polyak: 0.99
   target_entropy_ratio: null
 
 
 ddpg:
   env: MountainCarContinuous-v0
-  env_kwargs: null
   agent_kwargs:
     activation: tanh
   num_envs: 1
@@ -45,18 +43,17 @@ ddpg:
   fill_buffer: 1000
   batch_size: 100
   learning_rate: 0.001
-  gradient_steps: 1
+  num_epochs: 1
   total_timesteps: 10_000
   eval_freq: 100
   gamma: 0.98
-  tau: 0.995
+  polyak: 0.995
   max_grad_norm: 10
   exploration_noise: 0.2
 
 
 td3:
   env: MountainCarContinuous-v0
-  env_kwargs: null
   actor_kwargs:
       activation: relu
   critic_kwargs:
@@ -68,7 +65,7 @@ td3:
   total_timesteps: 10_000
   eval_freq: 100
   gamma: 0.98
-  tau: 0.995
+  polyak: 0.995
   max_grad_norm: 10
   exploration_noise: 0.2
   target_noise: 0.2

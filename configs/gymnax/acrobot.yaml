@@ -1,5 +1,5 @@
 ppo:
-  env: CartPole-v1
+  env: Acrobot-v1
   agent_kwargs:
     activation: tanh
   num_envs: 5
@@ -15,19 +15,20 @@ ppo:
   clip_eps: 0.2
   ent_coef: 0.01
   vf_coef: 0.5
+  normalize_observations: true
 
 dqn:
-  env: CartPole-v1
+  env: Acrobot-v1
   agent: DuelingQNetwork
   agent_kwargs:
     activation: swish
   num_envs: 10
-  buffer_size: 50_000
-  fill_buffer: 5_000
+  buffer_size: 10_000
+  fill_buffer: 1000
   batch_size: 100
   max_grad_norm: 10
   learning_rate: 0.001
-  gradient_steps: 5
+  num_epochs: 5
   total_timesteps: 100_000
   eval_freq: 2_500
   target_update_freq: 200
@@ -39,7 +40,7 @@ dqn:
   normalize_observations: false
 
 iqn:
-  env: CartPole-v1
+  env: Acrobot-v1
   agent_kwargs:
     activation: swish
   num_envs: 10
@@ -48,7 +49,7 @@ iqn:
   batch_size: 100
   max_grad_norm: 10
   learning_rate: 0.0003
-  gradient_steps: 5
+  num_epochs: 5
   total_timesteps: 100_000
   eval_freq: 5000
   target_update_freq: 500
@@ -59,7 +60,7 @@ iqn:
   normalize_observations: false
 
 sac:
-  env: CartPole-v1
+  env: Acrobot-v1
   agent_kwargs:
     activation: tanh
   num_envs: 5
@@ -67,15 +68,16 @@ sac:
   fill_buffer: 1000
   batch_size: 256
   learning_rate: 0.001
-  gradient_steps: 2
+  num_epochs: 2
   total_timesteps: 50_000
   eval_freq: 500
   gamma: 0.99
-  tau: 0.95
-  target_entropy_ratio: 0.7
+  polyak: 0.95
+  target_entropy_ratio: 0.1
+  normalize_observations: false
 
 es:
-  env: CartPole-v1
+  env: Acrobot-v1
   num_generations: 5
   eval_freq: 1
   strategy: SNES
@@ -83,9 +85,8 @@ es:
     popsize: 50
   num_rollouts: 8
 
-
 pqn:
-  env: CartPole-v1
+  env: Acrobot-v1
   num_envs: 16
   num_steps: 128
   num_minibatches: 16

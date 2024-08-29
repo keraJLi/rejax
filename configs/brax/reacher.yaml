@@ -1,29 +1,29 @@
 # tuned
 sac:
-  env: brax/pusher
-  env_kwargs:
-    episode_length: 100
+  env: brax/reacher
+  env_params:
+    episode_length: 50
   agent_kwargs:
     activation: tanh
   num_envs: 128
   buffer_size: 1_000_000
   fill_buffer: 10_000
   batch_size: 512
-  learning_rate: 0.00020495107742294415
-  gradient_steps: 128
+  learning_rate: 0.0004617429169256732
+  num_epochs: 128
   total_timesteps: 5242880
   eval_freq: 32768
-  gamma: 0.98
-  tau: 0.995
+  gamma: 0.95
+  polyak: 0.99
   target_entropy_ratio: 0
   normalize_observations: true
 
 
 # tuned
 ppo:
-  env: brax/pusher
-  env_kwargs:
-    episode_length: 100
+  env: brax/reacher
+  env_params:
+    episode_length: 50
   agent_kwargs:
     activation: tanh
   num_envs: 128
@@ -44,20 +44,20 @@ ppo:
 
 # tuned
 ddpg:
-  env: brax/pusher
-  env_kwargs:
-    episode_length: 100
+  env: brax/reacher
+  env_params:
+    episode_length: 50
   agent_kwargs:
     activation: tanh
   num_envs: 128
   buffer_size: 1048576
   fill_buffer: 8192
   batch_size: 512
-  learning_rate: 0.00020399223998555615
-  gradient_steps: 128
+  learning_rate: 0.00045165942467890313
+  num_epochs: 128
   total_timesteps: 1048576
   eval_freq: 32768
-  gamma: 0.95
-  tau: 0.99
+  gamma: 0.99
+  polyak: 0.98
   max_grad_norm: 0.1
-  exploration_noise: 0.5
+  exploration_noise: 0.2

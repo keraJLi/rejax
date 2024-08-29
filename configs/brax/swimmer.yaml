@@ -1,37 +1,37 @@
 # tuned
 sac:
-  env: brax/humanoidstandup
+  env: brax/swimmer
   agent_kwargs:
     activation: tanh
   num_envs: 128
-  buffer_size: 1048576
-  fill_buffer: 8192
-  batch_size: 256
-  learning_rate: 0.00020366442026830908
-  gradient_steps: 128
+  buffer_size: 1_000_000
+  fill_buffer: 10_000
+  batch_size: 128
+  learning_rate: 0.0005720796166976961
+  num_epochs: 128
   total_timesteps: 5242880
   eval_freq: 32768
-  gamma: 0.99
-  tau: 0.99
+  gamma: 0.995
+  polyak: 0.95
   target_entropy_ratio: 0
   normalize_observations: true
 
 
 # tuned
 ppo:
-  env: brax/humanoidstandup
+  env: brax/swimmer
   agent_kwargs:
     activation: tanh
-  num_envs: 32
-  num_steps: 32
-  num_epochs: 2
-  num_minibatches: 2
-  learning_rate: 0.0017203361125365498
-  max_grad_norm: 5
+  num_envs: 128
+  num_steps: 64
+  num_epochs: 7
+  num_minibatches: 8
+  learning_rate: 0.002890766122997103
+  max_grad_norm: 0.5
   total_timesteps: 5242880
   eval_freq: 32768
-  gamma: 0.99
-  gae_lambda: 0.8
+  gamma: 0.98
+  gae_lambda: 0.99
   clip_eps: 0.2
   ent_coef: 0.01
   vf_coef: 0.5
@@ -40,27 +40,27 @@ ppo:
 
 # tuned
 ddpg:
-  env: brax/humanoidstandup
+  env: brax/swimmer
   agent_kwargs:
     activation: tanh
   num_envs: 128
   buffer_size: 1048576
   fill_buffer: 8192
-  batch_size: 512
-  learning_rate: 0.00020399223998555615
-  gradient_steps: 128
+  batch_size: 128
+  learning_rate: 0.000468696655640884
+  num_epochs: 128
   total_timesteps: 5242880
   eval_freq: 32768
-  gamma: 0.95
-  tau: 0.99
+  gamma: 0.995
+  polyak: 0.995
   max_grad_norm: 0.1
-  exploration_noise: 0.5
-  normalize_observations: true
+  exploration_noise: 0.9
+  normalize_observations: false
 
 
 # tuned
 td3:
-  env: brax/humanoidstandup
+  env: brax/swimmer
   actor_kwargs:
     activation: tanh
   critic_kwargs:
@@ -68,16 +68,16 @@ td3:
   num_envs: 128
   buffer_size: 1048576
   fill_buffer: 8192
-  batch_size: 256
-  learning_rate: 0.0001538065811598203
-  gradient_steps: 128
+  batch_size: 512
+  learning_rate: 0.000217684386462317
+  num_epochs: 128
   total_timesteps: 5242880
   eval_freq: 262144
-  gamma: 0.99
-  tau: 0.95
-  max_grad_norm: 0.2
-  exploration_noise: 0.8
-  target_noise: 1.0
+  gamma: 0.995
+  polyak: 0.98
+  max_grad_norm: 0.1
+  exploration_noise: 0.9
+  target_noise: 0.9
   target_noise_clip: 0.9
-  policy_delay: 10
+  policy_delay: 2
   normalize_observations: true

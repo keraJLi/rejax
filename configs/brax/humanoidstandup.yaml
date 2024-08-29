@@ -1,6 +1,6 @@
 # tuned
 sac:
-  env: brax/walker2d
+  env: brax/humanoidstandup
   agent_kwargs:
     activation: tanh
   num_envs: 128
@@ -8,18 +8,18 @@ sac:
   fill_buffer: 8192
   batch_size: 256
   learning_rate: 0.00020366442026830908
-  gradient_steps: 128
+  num_epochs: 128
   total_timesteps: 5242880
   eval_freq: 32768
   gamma: 0.99
-  tau: 0.99
+  polyak: 0.99
   target_entropy_ratio: 0
   normalize_observations: true
 
 
 # tuned
 ppo:
-  env: brax/walker2d
+  env: brax/humanoidstandup
   agent_kwargs:
     activation: tanh
   num_envs: 32
@@ -40,27 +40,27 @@ ppo:
 
 # tuned
 ddpg:
-  env: brax/walker2d
+  env: brax/humanoidstandup
   agent_kwargs:
     activation: tanh
   num_envs: 128
   buffer_size: 1048576
   fill_buffer: 8192
   batch_size: 512
-  learning_rate: 0.00014524424253732564
-  gradient_steps: 128
+  learning_rate: 0.00020399223998555615
+  num_epochs: 128
   total_timesteps: 5242880
   eval_freq: 32768
-  gamma: 0.995
-  tau: 0.98
-  max_grad_norm: 1
-  exploration_noise: 0.2
+  gamma: 0.95
+  polyak: 0.99
+  max_grad_norm: 0.1
+  exploration_noise: 0.5
   normalize_observations: true
 
 
 # tuned
 td3:
-  env: brax/walker2d
+  env: brax/humanoidstandup
   actor_kwargs:
     activation: tanh
   critic_kwargs:
@@ -69,15 +69,15 @@ td3:
   buffer_size: 1048576
   fill_buffer: 8192
   batch_size: 256
-  learning_rate: 0.00018789279685460533
-  gradient_steps: 128
+  learning_rate: 0.0001538065811598203
+  num_epochs: 128
   total_timesteps: 5242880
   eval_freq: 262144
-  gamma: 0.995
-  tau: 0.95
-  max_grad_norm: 2
-  exploration_noise: 0.5
-  target_noise: 0.8
-  target_noise_clip: 0.5
-  policy_delay: 3
+  gamma: 0.99
+  polyak: 0.95
+  max_grad_norm: 0.2
+  exploration_noise: 0.8
+  target_noise: 1.0
+  target_noise_clip: 0.9
+  policy_delay: 10
   normalize_observations: true

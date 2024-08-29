@@ -1,25 +1,25 @@
 # tuned
 sac:
-  env: brax/halfcheetah
+  env: brax/walker2d
   agent_kwargs:
     activation: tanh
   num_envs: 128
-  buffer_size: 1_000_000
-  fill_buffer: 10_000
-  batch_size: 512
-  learning_rate: 0.00020495107742294415
-  gradient_steps: 128
+  buffer_size: 1048576
+  fill_buffer: 8192
+  batch_size: 256
+  learning_rate: 0.00020366442026830908
+  num_epochs: 128
   total_timesteps: 5242880
   eval_freq: 32768
-  gamma: 0.98
-  tau: 0.995
+  gamma: 0.99
+  polyak: 0.99
   target_entropy_ratio: 0
   normalize_observations: true
 
 
 # tuned
 ppo:
-  env: brax/halfcheetah
+  env: brax/walker2d
   agent_kwargs:
     activation: tanh
   num_envs: 32
@@ -40,26 +40,27 @@ ppo:
 
 # tuned
 ddpg:
-  env: brax/halfcheetah
+  env: brax/walker2d
   agent_kwargs:
     activation: tanh
   num_envs: 128
   buffer_size: 1048576
   fill_buffer: 8192
   batch_size: 512
-  learning_rate: 0.00020399223998555615
-  gradient_steps: 128
+  learning_rate: 0.00014524424253732564
+  num_epochs: 128
   total_timesteps: 5242880
   eval_freq: 32768
-  gamma: 0.95
-  tau: 0.99
-  max_grad_norm: 0.1
-  exploration_noise: 0.5
+  gamma: 0.995
+  polyak: 0.98
+  max_grad_norm: 1
+  exploration_noise: 0.2
   normalize_observations: true
+
 
 # tuned
 td3:
-  env: brax/halfcheetah
+  env: brax/walker2d
   actor_kwargs:
     activation: tanh
   critic_kwargs:
@@ -67,16 +68,16 @@ td3:
   num_envs: 128
   buffer_size: 1048576
   fill_buffer: 8192
-  batch_size: 512
-  learning_rate: 0.0001199272452295516
-  gradient_steps: 128
+  batch_size: 256
+  learning_rate: 0.00018789279685460533
+  num_epochs: 128
   total_timesteps: 5242880
   eval_freq: 262144
-  gamma: 0.99
-  tau: 0.99
-  max_grad_norm: 5
-  exploration_noise: 0.3
+  gamma: 0.995
+  polyak: 0.95
+  max_grad_norm: 2
+  exploration_noise: 0.5
   target_noise: 0.8
-  target_noise_clip: 0.6
-  policy_delay: 1
+  target_noise_clip: 0.5
+  policy_delay: 3
   normalize_observations: true

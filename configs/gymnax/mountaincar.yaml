@@ -1,7 +1,6 @@
 ppo:
   # Note: not fitted (idk how, probably impossible within 250k timesteps)
   env: MountainCar-v0
-  env_kwargs: null
   agent_kwargs:
     activation: tanh
   num_envs: 10
@@ -20,7 +19,6 @@ ppo:
 
 dqn:
   env: MountainCar-v0
-  env_kwargs: null
   agent: DuelingQNetwork
   agent_kwargs:
     activation: tanh
@@ -30,7 +28,7 @@ dqn:
   batch_size: 100
   max_grad_norm: 10
   learning_rate: 0.005
-  gradient_steps: 5
+  num_epochs: 5
   total_timesteps: 100_000
   eval_freq: 1000
   target_update_freq: 200
@@ -42,7 +40,6 @@ dqn:
 
 sac:
   env: MountainCar-v0
-  env_kwargs: null
   agent_kwargs:
     activation: tanh
   num_envs: 5
@@ -50,20 +47,26 @@ sac:
   fill_buffer: 1000
   batch_size: 100
   learning_rate: 0.005
-  gradient_steps: 5
+  num_epochs: 5
   total_timesteps: 50_000
   eval_freq: 500
   gamma: 1.0
-  tau: 0.8
+  polyak: 0.8
   target_entropy_ratio: 0.5
 
-es:
+pqn:
   env: MountainCar-v0
-  agent_kwargs:
-    features: [32]
-  num_generations: 100
-  eval_freq: 1
-  strategy: SNES
-  strategy_kwargs:
-    popsize: 50
-  num_rollouts: 8
+  num_envs: 16
+  num_steps: 128
+  num_minibatches: 16
+  max_grad_norm: 10
+  learning_rate: 0.0003
+  num_epochs: 5
+  total_timesteps: 524288
+  eval_freq: 16384
+  eps_start: 1
+  eps_end: 0.05
+  exploration_fraction: 0.5
+  gamma: 0.99
+  lambda_: 0.9
+  normalize_observations: false

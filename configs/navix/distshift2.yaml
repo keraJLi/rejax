@@ -7,11 +7,11 @@ sac:
   fill_buffer: 8_192
   batch_size: 256
   learning_rate: 0.0003
-  gradient_steps: 128
+  num_epochs: 128
   total_timesteps: 1_048_576
   eval_freq: 131_072
   gamma: 0.8
-  tau: 0.9
+  polyak: 0.9
   target_entropy_ratio: 0.6
   normalize_observations: true
 
@@ -19,16 +19,16 @@ ppo:
   env: navix/Navix-DistShift2-v0
   agent_kwargs:
     activation: swish
-  num_envs: 64
-  num_steps: 128
-  num_epochs: 8
+  num_envs: 256
+  num_steps: 64
+  num_epochs: 16
   num_minibatches: 1
   learning_rate: 0.0003
   max_grad_norm: 10
   total_timesteps: 1_048_576
   eval_freq: 262_144
-  gamma: 0.99
-  gae_lambda: 0.8
+  gamma: 0.95
+  gae_lambda: 0.95
   clip_eps: 0.2
   ent_coef: 0.01
   vf_coef: 0.5
@@ -39,7 +39,7 @@ dqn:
   agent_kwargs:
     activation: swish
   num_envs: 128
-  gradient_steps: 128
+  num_epochs: 128
   buffer_size: 131_072
   fill_buffer: 8_192
   batch_size: 1_024
@@ -54,3 +54,42 @@ dqn:
   target_update_freq: 8_192
   ddqn: true
   normalize_observations: true
+
+iqn:
+  env: navix/Navix-DistShift2-v0
+  agent_kwargs:
+    activation: relu
+  num_envs: 128
+  num_epochs: 128
+  buffer_size: 131072
+  fill_buffer: 8192
+  batch_size: 512
+  learning_rate: 0.0003
+  kappa: 1.0
+  num_tau_samples: 32
+  num_tau_prime_samples: 64
+  total_timesteps: 1048576
+  eval_freq: 131072
+  gamma: 0.9
+  eps_start: 1.0
+  eps_end: 0.01
+  exploration_fraction: 0.1
+  target_update_freq: 1024
+  normalize_observations: false
+
+pqn:
+  env: navix/Navix-DistShift2-v0
+  total_timesteps: 1048576
+  eval_freq: 262144
+  eps_start: 1
+  num_envs: 16
+  num_steps: 128
+  num_epochs: 8
+  num_minibatches: 128
+  learning_rate: 0.0002460710982480542
+  max_grad_norm: 5
+  eps_end: 0.1
+  exploration_fraction: 0.3
+  gamma: 0.9
+  lambda_: 0.8
+  normalize_observations: false

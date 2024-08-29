@@ -27,11 +27,11 @@ sac:
   fill_buffer: 256
   batch_size: 256
   learning_rate: 0.01
-  gradient_steps: 1
+  num_epochs: 1
   total_timesteps: 10_000
   eval_freq: 100
   gamma: 0.99
-  tau: 0.98
+  polyak: 0.98
   target_entropy_ratio: null
   normalize_observations: true
 
@@ -45,11 +45,11 @@ ddpg:
   fill_buffer: 1000
   batch_size: 100
   learning_rate: 0.001
-  gradient_steps: 1
+  num_epochs: 1
   total_timesteps: 10_000
   eval_freq: 100
   gamma: 0.98
-  tau: 0.995
+  polyak: 0.995
   max_grad_norm: 10
   exploration_noise: 0.2
   normalize_observations: true
@@ -66,11 +66,11 @@ td3:
   fill_buffer: 1000
   batch_size: 100
   learning_rate: 0.001
-  gradient_steps: 1
+  num_epochs: 1
   total_timesteps: 10_000
   eval_freq: 100
   gamma: 0.99
-  tau: 0.95
+  polyak: 0.95
   max_grad_norm: 100
   exploration_noise: 0.3
   target_noise: 0.2

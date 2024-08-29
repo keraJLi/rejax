@@ -1,41 +1,37 @@
 # tuned
 sac:
-  env: brax/reacher
-  env_kwargs:
-    episode_length: 50
+  env: brax/ant
   agent_kwargs:
     activation: tanh
   num_envs: 128
   buffer_size: 1_000_000
   fill_buffer: 10_000
   batch_size: 512
-  learning_rate: 0.0004617429169256732
-  gradient_steps: 128
+  learning_rate: 0.00012002827428180874
+  num_epochs: 128
   total_timesteps: 5242880
   eval_freq: 32768
   gamma: 0.95
-  tau: 0.99
+  polyak: 0.99
   target_entropy_ratio: 0
   normalize_observations: true
 
 
 # tuned
 ppo:
-  env: brax/reacher
-  env_kwargs:
-    episode_length: 50
+  env: brax/ant
   agent_kwargs:
     activation: tanh
-  num_envs: 128
-  num_steps: 128
+  num_envs: 64
+  num_steps: 64
   num_epochs: 8
-  num_minibatches: 64
-  learning_rate: 0.00027520696850790545
-  max_grad_norm: 0.1
-  total_timesteps: 1048576
+  num_minibatches: 16
+  learning_rate: 0.00010838581269344756
+  max_grad_norm: 0.5
+  total_timesteps: 5242880
   eval_freq: 32768
-  gamma: 0.95
-  gae_lambda: 0.95
+  gamma: 0.98
+  gae_lambda: 0.8
   clip_eps: 0.2
   ent_coef: 0.01
   vf_coef: 0.5
@@ -44,20 +40,18 @@ ppo:
 
 # tuned
 ddpg:
-  env: brax/reacher
-  env_kwargs:
-    episode_length: 50
+  env: brax/ant
   agent_kwargs:
     activation: tanh
   num_envs: 128
   buffer_size: 1048576
   fill_buffer: 8192
   batch_size: 512
-  learning_rate: 0.00045165942467890313
-  gradient_steps: 128
-  total_timesteps: 1048576
+  learning_rate: 0.00020399223998555615
+  num_epochs: 128
+  total_timesteps: 5242880
   eval_freq: 32768
-  gamma: 0.99
-  tau: 0.98
+  gamma: 0.95
+  polyak: 0.99
   max_grad_norm: 0.1
-  exploration_noise: 0.2
+  exploration_noise: 0.5
