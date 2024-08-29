@@ -10,11 +10,18 @@ from flax.training.train_state import TrainState
 from jax import numpy as jnp
 
 from rejax.algos.algorithm import Algorithm, register_init
-from rejax.algos.mixins import (NormalizeObservationsMixin, ReplayBufferMixin,
-                                TargetNetworkMixin)
+from rejax.algos.mixins import (
+    NormalizeObservationsMixin,
+    ReplayBufferMixin,
+    TargetNetworkMixin,
+)
 from rejax.buffers import Minibatch
-from rejax.networks import (DiscretePolicy, DiscreteQNetwork, QNetwork,
-                            SquashedGaussianPolicy)
+from rejax.networks import (
+    DiscretePolicy,
+    DiscreteQNetwork,
+    QNetwork,
+    SquashedGaussianPolicy,
+)
 
 
 class SAC(
@@ -25,6 +32,7 @@ class SAC(
 ):
     actor: nn.Module = struct.field(pytree_node=False, default=None)
     critic: nn.Module = struct.field(pytree_node=False, default=None)
+    num_critics: int = struct.field(pytree_node=False, default=10)
     num_epochs: int = struct.field(pytree_node=False, default=1)
     target_entropy_ratio: chex.Scalar = struct.field(pytree_node=True, default=0.98)
 
@@ -83,7 +91,7 @@ class SAC(
         rng, rng_actor, rng_critic = jax.random.split(rng, 3)
         actor_params = self.actor.init(rng_actor, obs_ph, rng_actor)
 
-        rng_critic = jax.random.split(rng_critic, 2)
+        rng_critic = jax.random.split(rng_critic, self.num_critics)
         if self.discrete:
             critic_params = jax.vmap(self.critic.init, in_axes=(0, None))(
                 rng_critic, obs_ph
@@ -211,15 +219,15 @@ class SAC(
                 logprob = jnp.log(
                     self.actor.apply(params, mb.obs, method="_action_dist").probs
                 )
-                q1, q2 = self.vmap_critic(ts.critic_ts.params, mb.obs)
-                loss_pi = alpha * logprob - jnp.minimum(q1, q2)
+                qs = self.vmap_critic(ts.critic_ts.params, mb.obs)
+                loss_pi = alpha * logprob - qs.min(axis=0)
                 loss_pi = jnp.sum(jnp.exp(logprob) * loss_pi, axis=1)
             else:
                 action, logprob = self.actor.apply(
                     params, mb.obs, action_rng, method="action_log_prob"
                 )
-                q1, q2 = self.vmap_critic(ts.critic_ts.params, mb.obs, action)
-                loss_pi = alpha * logprob - jnp.minimum(q1, q2)
+                qs = self.vmap_critic(ts.critic_ts.params, mb.obs, action)
+                loss_pi = alpha * logprob - qs.min(axis=0)
             return loss_pi.mean(), logprob
 
         grads, logprob = jax.grad(actor_loss_fn, has_aux=True)(ts.actor_ts.params)
@@ -257,10 +265,8 @@ class SAC(
                 qs = self.vmap_critic(params, mb.obs, mb.action)
 
             target = mb.reward + self.gamma * (1 - mb.done) * q_target
-            q1, q2 = qs  # Change to vmap when implementing SAC-N
-            loss_q1 = optax.l2_loss(q1, target).mean()
-            loss_q2 = optax.l2_loss(q2, target).mean()
-            return loss_q1 + loss_q2
+            losses = jax.vmap(lambda q: optax.l2_loss(q, target))(qs)
+            return losses.sum(axis=0).mean()
 
         grads = jax.grad(critic_loss_fn)(ts.critic_ts.params)
         ts = ts.replace(critic_ts=ts.critic_ts.apply_gradients(grads=grads))
