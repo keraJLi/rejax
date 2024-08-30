@@ -37,8 +37,8 @@ class TargetMinibatch(struct.PyTreeNode):
 
 class PQN(OnPolicyMixin, EpsilonGreedyMixin, NormalizeObservationsMixin, Algorithm):
     agent: nn.Module = struct.field(pytree_node=False, default=None)
-    lambda_: chex.Scalar = struct.field(pytree_node=True, default=0.9)
     num_epochs: int = struct.field(pytree_node=False, default=1)
+    td_lambda: chex.Scalar = struct.field(pytree_node=True, default=0.9)
 
     def make_act(self, ts):
         def act(obs, rng):
@@ -137,7 +137,7 @@ class PQN(OnPolicyMixin, EpsilonGreedyMixin, NormalizeObservationsMixin, Algorit
     def calculate_targets(self, trajectories, max_last_q):
         def get_target(lambda_return_and_next_q, t):
             lambda_return, next_q = lambda_return_and_next_q
-            return_bootstrap = next_q + self.lambda_ * (lambda_return - next_q)
+            return_bootstrap = next_q + self.td_lambda * (lambda_return - next_q)
             lambda_return = t.reward + (1 - t.done) * self.gamma * (return_bootstrap)
             max_next_q = t.next_q.max(axis=1)
             return (lambda_return, max_next_q), lambda_return

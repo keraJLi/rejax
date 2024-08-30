@@ -49,9 +49,9 @@ class VectorizedEnvMixin(struct.PyTreeNode):
 
 
 class ReplayBufferMixin(VectorizedEnvMixin):
-    buffer_size: int = struct.field(pytree_node=False, default=100_000)
-    fill_buffer: int = struct.field(pytree_node=False, default=1_000)
-    batch_size: int = struct.field(pytree_node=False, default=100)
+    buffer_size: int = struct.field(pytree_node=False, default=131_072)
+    fill_buffer: int = struct.field(pytree_node=False, default=2_048)
+    batch_size: int = struct.field(pytree_node=False, default=256)
 
     @register_init
     def initialize_replay_buffer(self, rng):
@@ -97,8 +97,9 @@ class ReplayBufferMixin(VectorizedEnvMixin):
 
 
 class OnPolicyMixin(VectorizedEnvMixin):
-    num_steps: int = struct.field(pytree_node=False, default=50)
-    num_minibatches: int = struct.field(pytree_node=False, default=10)
+    num_envs: int = struct.field(pytree_node=False, default=64)  # overwrite default
+    num_steps: int = struct.field(pytree_node=False, default=64)
+    num_minibatches: int = struct.field(pytree_node=False, default=16)
 
     @property
     def minibatch_size(self):
@@ -157,7 +158,7 @@ class OnPolicyMixin(VectorizedEnvMixin):
 
 class TargetNetworkMixin(struct.PyTreeNode):
     target_update_freq: int = struct.field(pytree_node=False, default=1)
-    polyak: chex.Scalar = struct.field(pytree_node=True, default=0.98)
+    polyak: chex.Scalar = struct.field(pytree_node=True, default=0.99)
 
     def polyak_update(self, params, target_params):
         return jax.tree_map(

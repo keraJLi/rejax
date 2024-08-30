@@ -31,14 +31,11 @@ class AdvantageMinibatch(struct.PyTreeNode):
 class PPO(OnPolicyMixin, NormalizeObservationsMixin, Algorithm):
     actor: nn.Module = struct.field(pytree_node=False, default=None)
     critic: nn.Module = struct.field(pytree_node=False, default=None)
-    num_epochs: int = struct.field(pytree_node=False, default=5)
+    num_epochs: int = struct.field(pytree_node=False, default=8)
     gae_lambda: chex.Scalar = struct.field(pytree_node=True, default=0.95)
     clip_eps: chex.Scalar = struct.field(pytree_node=True, default=0.2)
-    ent_coef: chex.Scalar = struct.field(pytree_node=True, default=0.01)
     vf_coef: chex.Scalar = struct.field(pytree_node=True, default=0.5)
-
-    # Overwrite default params
-    num_envs: int = struct.field(pytree_node=False, default=100)
+    ent_coef: chex.Scalar = struct.field(pytree_node=True, default=0.01)
 
     def make_act(self, ts):
         def act(obs, rng):

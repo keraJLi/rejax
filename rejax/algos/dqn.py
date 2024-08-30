@@ -6,11 +6,14 @@ from flax.training.train_state import TrainState
 from jax import numpy as jnp
 
 from rejax.algos.algorithm import Algorithm, register_init
-from rejax.algos.mixins import (EpsilonGreedyMixin, NormalizeObservationsMixin,
-                                ReplayBufferMixin, TargetNetworkMixin)
+from rejax.algos.mixins import (
+    EpsilonGreedyMixin,
+    NormalizeObservationsMixin,
+    ReplayBufferMixin,
+    TargetNetworkMixin,
+)
 from rejax.buffers import Minibatch
-from rejax.networks import (DiscreteQNetwork, DuelingQNetwork,
-                            EpsilonGreedyPolicy)
+from rejax.networks import DiscreteQNetwork, DuelingQNetwork, EpsilonGreedyPolicy
 
 
 class DQN(
@@ -21,8 +24,8 @@ class DQN(
     Algorithm,
 ):
     agent: nn.Module = struct.field(pytree_node=False, default=None)
-    ddqn: bool = struct.field(pytree_node=True, default=True)
     num_epochs: int = struct.field(pytree_node=False, default=1)
+    ddqn: bool = struct.field(pytree_node=True, default=True)
 
     def make_act(self, ts):
         def act(obs, rng):

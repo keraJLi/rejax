@@ -38,7 +38,7 @@ class TD3(
     critic: nn.Module = struct.field(pytree_node=False, default=None)
     num_critics: int = struct.field(pytree_node=False, default=2)
     num_epochs: int = struct.field(pytree_node=False, default=1)
-    exploration_noise: chex.Scalar = struct.field(pytree_node=True, default=0.1)
+    exploration_noise: chex.Scalar = struct.field(pytree_node=True, default=0.3)
     target_noise: chex.Scalar = struct.field(pytree_node=True, default=0.2)
     target_noise_clip: chex.Scalar = struct.field(pytree_node=True, default=0.5)
     policy_delay: int = struct.field(pytree_node=False, default=2)

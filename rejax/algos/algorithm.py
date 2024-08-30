@@ -24,12 +24,12 @@ class Algorithm(struct.PyTreeNode):
     env: Environment = struct.field(pytree_node=False)
     env_params: Any = struct.field(pytree_node=True)
     eval_callback: Callable = struct.field(pytree_node=False)
-    eval_freq: int = struct.field(pytree_node=False, default=10_000)
+    eval_freq: int = struct.field(pytree_node=False, default=4_096)
     skip_initial_evaluation: bool = struct.field(pytree_node=False, default=False)
 
     # Common parameters (excluding algorithm-specific ones)
-    total_timesteps: int = struct.field(pytree_node=False, default=100000)
-    learning_rate: chex.Scalar = struct.field(pytree_node=True, default=0.005)
+    total_timesteps: int = struct.field(pytree_node=False, default=131_072)
+    learning_rate: chex.Scalar = struct.field(pytree_node=True, default=0.0003)
     gamma: chex.Scalar = struct.field(pytree_node=True, default=0.99)
     max_grad_norm: chex.Scalar = struct.field(pytree_node=True, default=jnp.inf)
 
