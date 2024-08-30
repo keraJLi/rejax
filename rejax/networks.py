@@ -300,7 +300,7 @@ class ImplicitQuantileNetwork(nn.Module):
 
     risk_distortion: Callable = lambda tau: tau
     # risk_distortion: Callable = lambda tau: 0.8 * tau
-    # risk_distortion: Callable = lambda tau: tau ** 0.71 / (tau ** 0.71 + (1 - tau) ** 0.71) ** (1 / 0.71)
+    # Or e.g.: tau ** 0.71 / (tau ** 0.71 + (1 - tau) ** 0.71) ** (1 / 0.71)
 
     @property
     def embedding_dim(self):
@@ -312,7 +312,6 @@ class ImplicitQuantileNetwork(nn.Module):
         psi = MLP(self.hidden_layer_sizes, self.activation)(x)
 
         tau = distrax.Uniform(0, 1).sample(seed=rng, sample_shape=obs.shape[0])
-        # tau = distrax.Uniform(0, 1).sample(seed=rng, sample_shape=(obs.shape[0], 3)).mean(axis=1)
         tau = self.risk_distortion(tau)
         phi_input = jnp.cos(jnp.pi * jnp.outer(tau, jnp.arange(self.embedding_dim)))
         phi = nn.relu(nn.Dense(self.embedding_dim)(phi_input))
