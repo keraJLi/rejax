@@ -47,21 +47,20 @@ If you're new to <strong>rejax</strong> and want to learn more about it,
 - Use `jax.vmap` and `jax.pmap` on the initial seed or hyperparameters to train a whole batch of agents in parallel! 
 
 ```python
-from rejax import get_algo
+from rejax import SAC
 
 # Get train function and initialize config for training
-algo, config_cls = get_algo("sac")
-train_config = config_cls.create(env="CartPole-v1", learning_rate=0.001)
+algo = SAC.create(env="CartPole-v1", learning_rate=0.001)
 
 # Jit the training function
-jitted_train_fn = jax.jit(algo.train)
+train_fn = jax.jit(algo.train)
 
 # Vmap training function over 300 initial seeds
-vmapped_train_fn = jax.vmap(jitted_train_fn, in_axes=(None, 0))
+vmapped_train_fn = jax.vmap(train_fn)
 
 # Train 300 agents!
 keys = jax.random.split(jax.random.PRNGKey(0), 300)
-train_state, evaluation = vmapped_train_fn(train_config, keys)
+train_state, evaluation = vmapped_train_fn(keys)
 ```
 
 Benchmark on an A100 80G and a Intel Xeon 4215R CPU. Note that the hyperparameters were set to the default values of cleanRL, including buffer sizes. Shrinking the buffers can yield additional speedups due to better caching, and enables training of even more agents in parallel.
@@ -86,10 +85,9 @@ Easily modify the implemented algorithms by overwriting isolated parts, such as 
 For example, easily turn DQN into DDQN by writing
 ```python
 class DoubleDQN(DQN):
-    @classmethod
-    def update(cls, config, state, minibatch):
+    def update(self, state, minibatch):
         # Calculate DDQN-specific targets
-        targets = ddqn_targets(config, state, minibatch)
+        targets = ddqn_targets(state, minibatch)
 
         # The loss function predicts Q-values and returns MSBE
         def loss_fn(params):
@@ -109,8 +107,8 @@ class DoubleDQN(DQN):
 Using callbacks, you can run logging to the console, disk, wandb, and much more. Even when the whole train function is jitted! For example, run a jax.experimental.io_callback regular intervals during training, or print the current policies mean return:
 
 ```python
-def print_callback(config, state, rng):
-    policy = make_act(config, state)         # Get current policy
+def print_callback(algo, state, rng):
+    policy = make_act(algo, state)           # Get current policy
     episode_returns = evaluate(policy, ...)  # Evaluate it
     jax.debug.print(                         # Print results
         "Step: {}. Mean return: {}",
@@ -119,10 +117,10 @@ def print_callback(config, state, rng):
     )
     return ()  # Must return PyTree (None is not a PyTree)
 
-config = config.replace(eval_callback=print_callback)
+algo = algo.replace(eval_callback=print_callback)
 ```
 
-Callbacks have the signature `callback(config, train_state, rng) -> PyTree`, which is called every `eval_freq` training steps with the config and current train state. The output of the callback will be aggregated over training and returned by the train function. The default callback runs a number of episodes in the training environment and returns their length and episodic return, such that the train function returns a training curve.
+Callbacks have the signature `callback(algo, train_state, rng) -> PyTree`, which is called every `eval_freq` training steps with the config and current train state. The output of the callback will be aggregated over training and returned by the train function. The default callback runs a number of episodes in the training environment and returns their length and episodic return, such that the train function returns a training curve.
 
 Importantly, this function is jit-compiled along with the rest of the algorithm. However, you can use one of Jax's callbacks such as `jax.experimental.io_callback` to implement model checkpoining, logging to wandb, and more, all while maintaining the advantages of a completely jittable training function.
 
