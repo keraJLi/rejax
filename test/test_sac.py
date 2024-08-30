@@ -22,7 +22,7 @@ from .environments import (
 class TestEnvironmentsSAC(unittest.TestCase):
     args = {
         "num_envs": 1,
-        "learning_rate": 0.01,
+        "learning_rate": 0.0003,
         "total_timesteps": 10_000,
         "eval_freq": 10_000,
         "buffer_size": 1000,

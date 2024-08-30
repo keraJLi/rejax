@@ -18,7 +18,7 @@ class TestEnvironmentsPQN(unittest.TestCase):
         "num_envs": 100,
         "num_steps": 10,
         "num_epochs": 10,
-        "learning_rate": 0.003,
+        "learning_rate": 0.0003,
         "total_timesteps": 100_000,
         "eval_freq": 100_000,
         "skip_initial_evaluation": True,

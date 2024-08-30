@@ -17,7 +17,7 @@ from .environments import (
 class TestEnvironmentsTD3(unittest.TestCase):
     args = {
         "num_envs": 1,
-        "learning_rate": 0.003,
+        "learning_rate": 0.0003,
         "total_timesteps": 10_000,
         "eval_freq": 10_000,
         "buffer_size": 10_000,
