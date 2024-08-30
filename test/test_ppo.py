@@ -97,7 +97,6 @@ class TestEnvironmentsPPO(unittest.TestCase):
 
                 if not discrete:
                     value = ppo.critic.apply(ts.critic_ts.params, obs)
-                    print(obs, value)
                     for v in value:
                         self.assertAlmostEqual(v, 0.0, delta=0.1)
 
