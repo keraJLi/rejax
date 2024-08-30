@@ -7,7 +7,7 @@ from flax import linen as nn
 from jax import numpy as jnp
 
 from rejax import DQN
-from rejax.evaluate import make_evaluate
+from rejax.evaluate import evaluate
 from rejax.networks import EpsilonGreedyPolicy
 
 
@@ -35,8 +35,6 @@ class ConvDuelingQNetwork(nn.Module):
         return jnp.take_along_axis(q_values, action[:, None], axis=1).squeeze(1)
 
 
-print(DQN.create_agent)
-
 algo = DQN.create(
     env="Freeway-MinAtar",
     total_timesteps=1_000_000,
@@ -56,12 +54,11 @@ algo = DQN.create(
     ddqn=True,
 )
 
-evaluate = make_evaluate(DQN.make_act, algo.env, algo.env_params, 10)
-
 
 # Overwrite default evaluation callback to log episode lengths and returns
 def log_callback(algo, train_state, rng):
-    lengths, returns = evaluate(algo, train_state, rng)
+    act = algo.make_act(train_state)
+    lengths, returns = evaluate(act, rng, algo.env, algo.env_params, 200)
     jax.debug.print(
         "global step: {}, mean episode length: {} ± {}std, mean return: {} ± {}std",
         train_state.global_step,
