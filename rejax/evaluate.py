@@ -76,7 +76,9 @@ def evaluate(
         Tuple[chex.Array, chex.Array]: Tuple of episode length and cumultative reward
         for each seed.
     """
-    max_steps_in_episode = max_steps_in_episode or env_params.max_steps_in_episode
+    if max_steps_in_episode is None:
+        max_steps_in_episode = env_params.max_steps_in_episode
+
     seeds = jax.random.split(rng, num_seeds)
     vmap_collect = jax.vmap(evaluate_single, in_axes=(None, None, None, 0, None))
     return vmap_collect(act, env, env_params, seeds, max_steps_in_episode)

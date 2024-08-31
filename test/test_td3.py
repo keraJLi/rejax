@@ -18,11 +18,8 @@ class TestEnvironmentsTD3(unittest.TestCase):
     args = {
         "num_envs": 1,
         "learning_rate": 0.0003,
-        "total_timesteps": 10_000,
-        "eval_freq": 10_000,
-        "buffer_size": 10_000,
-        "fill_buffer": 100,
-        "batch_size": 100,
+        "total_timesteps": 16384,
+        "eval_freq": 16384,
         "skip_initial_evaluation": True,
     }
 

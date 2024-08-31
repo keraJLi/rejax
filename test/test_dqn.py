@@ -16,8 +16,8 @@ from .environments import (
 class TestEnvironmentsDQN(unittest.TestCase):
     args = {
         "learning_rate": 0.0003,
-        "total_timesteps": 10_000,
-        "eval_freq": 10_000,
+        "total_timesteps": 16384,
+        "eval_freq": 16384,
         "skip_initial_evaluation": True,
     }
 

@@ -15,12 +15,12 @@ from .environments import (
 
 class TestEnvironmentsPQN(unittest.TestCase):
     args = {
-        "num_envs": 100,
-        "num_steps": 10,
+        "num_envs": 64,
+        "num_steps": 16,
         "num_epochs": 10,
         "learning_rate": 0.0003,
-        "total_timesteps": 100_000,
-        "eval_freq": 100_000,
+        "total_timesteps": 131072,
+        "eval_freq": 131072,
         "skip_initial_evaluation": True,
     }
 
