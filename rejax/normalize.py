@@ -1,5 +1,10 @@
+from functools import partial
+from typing import Any, Optional, Tuple, Union
+
 import chex
+import jax
 from flax import struct
+from gymnax.environments import environment
 from jax import numpy as jnp
 
 """
@@ -49,3 +54,33 @@ def normalize_obs(rms_state, obs):
 def update_and_normalize(rms_state, obs, batched=True):
     rms_state = update_rms(rms_state, obs, batched)
     return rms_state, normalize_obs(rms_state, obs)
+
+
+class FloatObsWrapper:
+    def __init__(self, env):
+        self.env = env
+
+    def __getattr__(self, name: str) -> Any:
+        if name in ["reset", "step"]:
+            return super().__getattr__(name)
+        return getattr(self.env, name)
+
+    @partial(jax.jit, static_argnums=(0,))
+    def step(
+        self,
+        key: chex.PRNGKey,
+        state: environment.EnvState,
+        action: Union[int, float],
+        params: Optional[environment.EnvParams] = None,
+    ) -> Tuple[chex.Array, environment.EnvState, float, bool, dict]:
+        obs, state, reward, done, info = self.env.step(key, state, action, params)
+        obs = obs.astype(float)
+        return obs, state, reward, done, info
+
+    @partial(jax.jit, static_argnums=(0,))
+    def reset(
+        self, key: chex.PRNGKey, params: Optional[environment.EnvParams] = None
+    ) -> Tuple[chex.Array, environment.EnvState]:
+        obs, state = self.env.reset(key, params)
+        obs = obs.astype(float)
+        return obs, state

@@ -1,0 +1,56 @@
+sac:
+  env: navix/Navix-Dynamic-Obstacles-6x6-Random-v0
+  agent_kwargs:
+    activation: tanh
+  num_envs: 128
+  buffer_size: 131_072
+  fill_buffer: 8_192
+  batch_size: 512
+  learning_rate: 0.0003
+  num_epochs: 128
+  total_timesteps: 1_048_576
+  eval_freq: 131_072
+  gamma: 0.8
+  polyak: 0.95
+  target_entropy_ratio: 0.5
+  normalize_observations: false
+
+ppo:
+  env: navix/Navix-Dynamic-Obstacles-6x6-Random-v0
+  agent_kwargs:
+    activation: tanh
+  num_envs: 16
+  num_steps: 128
+  num_epochs: 16
+  num_minibatches: 8
+  learning_rate: 0.0003
+  max_grad_norm: 5
+  total_timesteps: 1_048_576
+  eval_freq: 262_144
+  gamma: 0.99
+  gae_lambda: 0.99
+  clip_eps: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  normalize_observations: true
+
+dqn:
+  env: navix/Navix-Dynamic-Obstacles-6x6-Random-v0
+  agent_kwargs:
+    activation: relu
+  num_envs: 128
+  num_epochs: 128
+  buffer_size: 131_072
+  fill_buffer: 8_192
+  batch_size: 1_024
+  learning_rate: 0.0003
+  max_grad_norm: 0.5
+  total_timesteps: 1_048_576
+  eval_freq: 131_072
+  gamma: 0.95
+  eps_start: 1.0
+  eps_end: 0.01
+  exploration_fraction: 0.5
+  target_update_freq: 512
+  ddqn: true
+  normalize_observations: true

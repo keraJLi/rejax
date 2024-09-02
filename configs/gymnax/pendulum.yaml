@@ -1,0 +1,91 @@
+ppo:
+  env: Pendulum-v1
+  agent_kwargs:
+    activation: swish
+  num_envs: 100
+  num_steps: 100
+  num_epochs: 10
+  num_minibatches: 10
+  learning_rate: 0.001
+  max_grad_norm: 10
+  total_timesteps: 150_000
+  eval_freq: 2000
+  gamma: 0.995
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+  normalize_observations: true
+
+
+sac:
+  env: Pendulum-v1
+  agent_kwargs:
+    activation: swish
+  num_envs: 1
+  buffer_size: 10_000
+  fill_buffer: 256
+  batch_size: 256
+  learning_rate: 0.01
+  num_epochs: 1
+  total_timesteps: 10_000
+  eval_freq: 100
+  gamma: 0.99
+  polyak: 0.98
+  target_entropy_ratio: null
+  normalize_observations: true
+
+
+ddpg:
+  env: Pendulum-v1
+  agent_kwargs:
+    activation: swish
+  num_envs: 1
+  buffer_size: 5_000
+  fill_buffer: 1000
+  batch_size: 100
+  learning_rate: 0.001
+  num_epochs: 1
+  total_timesteps: 10_000
+  eval_freq: 100
+  gamma: 0.98
+  polyak: 0.995
+  max_grad_norm: 10
+  exploration_noise: 0.2
+  normalize_observations: true
+
+
+td3:
+  env: Pendulum-v1
+  actor_kwargs:
+      activation: swish
+  critic_kwargs:
+      activation: swish
+  num_envs: 1
+  buffer_size: 10_000
+  fill_buffer: 1000
+  batch_size: 100
+  learning_rate: 0.001
+  num_epochs: 1
+  total_timesteps: 10_000
+  eval_freq: 100
+  gamma: 0.99
+  polyak: 0.95
+  max_grad_norm: 100
+  exploration_noise: 0.3
+  target_noise: 0.2
+  target_noise_clip: 0.5
+  policy_delay: 2
+  normalize_observations: true
+
+es:
+  env: Pendulum-v1
+  agent_kwargs:
+    features: [32]
+    use_bias: true
+  num_generations: 100
+  eval_freq: 1
+  strategy: SNES
+  strategy_kwargs:
+    popsize: 50
+  num_rollouts: 8

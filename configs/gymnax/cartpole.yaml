@@ -1,0 +1,109 @@
+ppo:
+  env: CartPole-v1
+  agent_kwargs:
+    activation: tanh
+  num_envs: 5
+  num_steps: 100
+  num_epochs: 5
+  num_minibatches: 5
+  learning_rate: 0.00075
+  max_grad_norm: 0.5
+  total_timesteps: 100_000
+  eval_freq: 1000
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+
+dqn:
+  env: CartPole-v1
+  agent: DuelingQNetwork
+  agent_kwargs:
+    activation: swish
+  num_envs: 10
+  buffer_size: 50_000
+  fill_buffer: 5_000
+  batch_size: 100
+  max_grad_norm: 10
+  learning_rate: 0.001
+  num_epochs: 5
+  total_timesteps: 100_000
+  eval_freq: 2_500
+  # target_update_freq: 200
+  polyak: 0.98
+  eps_start: 1
+  eps_end: 0.05
+  exploration_fraction: 0.5
+  gamma: 0.99
+  ddqn: true
+  normalize_observations: false
+
+
+# decent {'env': <gymnax.environments.classic_control.cartpole.CartPole object at 0x7fee52be6f50>, 'env_params': {'gravity': 9.8, 'masscart': 1.0, 'masspole': 0.1, 'total_mass': 1.1, 'length': 0.5, 'polemass_length': 0.05, 'force_mag': 10.0, 'tau': 0.02, 'theta_threshold_radians': 0.20943951023931953, 'x_threshold': 2.4, 'max_steps_in_episode': 500}, 'eval_callback': <function Algorithm.create.<locals>.eval_callback at 0x7fee52c5c4c0>, 'eval_freq': 5000, 'skip_initial_evaluation': False, 'total_timesteps': 100000, 'learning_rate': 0.0003, 'gamma': 0.99, 'max_grad_norm': inf, 'normalize_observations': False, 'target_update_freq': 1, 'polyak': 0.99, 'num_envs': 1, 'buffer_size': 100000, 'fill_buffer': 1000, 'batch_size': 1, 'eps_start': 1, 'eps_end': 0.01, 'exploration_fraction': 0.5, 'agent': {'hidden_layer_sizes': (64, 64), 'activation': <PjitFunction>, 'action_dim': 2, 'risk_distortion': <function ImplicitQuantileNetwork.<lambda> at 0x7fee52ba3400>, 'parent': None, 'name': None}, 'num_epochs': 1, 'num_tau_samples': 64, 'num_tau_prime_samples': 64, 'kappa': 1.0}
+# 500 seed 0 {'env': <gymnax.environments.classic_control.cartpole.CartPole object at 0x7fe98540ca60>, 'env_params': {'gravity': 9.8, 'masscart': 1.0, 'masspole': 0.1, 'total_mass': 1.1, 'length': 0.5, 'polemass_length': 0.05, 'force_mag': 10.0, 'tau': 0.02, 'theta_threshold_radians': 0.20943951023931953, 'x_threshold': 2.4, 'max_steps_in_episode': 500}, 'eval_callback': <function Algorithm.create.<locals>.eval_callback at 0x7fe9854884c0>, 'eval_freq': 5000, 'skip_initial_evaluation': False, 'total_timesteps': 100000, 'learning_rate': 0.001, 'gamma': 0.99, 'max_grad_norm': inf, 'normalize_observations': False, 'target_update_freq': 1, 'polyak': 0.99, 'num_envs': 10, 'buffer_size': 100000, 'fill_buffer': 1000, 'batch_size': 32, 'eps_start': 1, 'eps_end': 0.01, 'exploration_fraction': 0.5, 'agent': {'hidden_layer_sizes': (64, 64), 'activation': <PjitFunction>, 'action_dim': 2, 'risk_distortion': <function ImplicitQuantileNetwork.<lambda> at 0x7fe9855cb400>, 'parent': None, 'name': None}, 'num_epochs': 5, 'num_tau_samples': 64, 'num_tau_prime_samples': 64, 'kappa': 30.0}
+iqn:
+  env: CartPole-v1
+  agent_kwargs:
+    activation: swish
+  num_envs: 1
+  buffer_size: 100_000
+  fill_buffer: 1000
+  batch_size: 1  # The original paper had no minibatches
+  num_tau_samples: 64
+  num_tau_prime_samples: 64
+  learning_rate: 0.0003
+  num_epochs: 1
+  total_timesteps: 100_000
+  eval_freq: 5000
+  target_update_freq: 1
+  polyak: 0.99
+  kappa: 1.0
+  eps_start: 1
+  eps_end: 0.01
+  exploration_fraction: 0.5
+  gamma: 0.99
+  normalize_observations: false
+
+sac:
+  env: CartPole-v1
+  agent_kwargs:
+    activation: tanh
+  num_envs: 5
+  buffer_size: 10_000
+  fill_buffer: 1000
+  batch_size: 256
+  learning_rate: 0.001
+  num_epochs: 2
+  total_timesteps: 50_000
+  eval_freq: 500
+  gamma: 0.99
+  polyak: 0.95
+  target_entropy_ratio: 0.7
+
+es:
+  env: CartPole-v1
+  num_generations: 5
+  eval_freq: 1
+  strategy: SNES
+  strategy_kwargs:
+    popsize: 50
+  num_rollouts: 8
+
+
+pqn:
+  env: CartPole-v1
+  num_envs: 16
+  num_steps: 128
+  num_minibatches: 16
+  max_grad_norm: 10
+  learning_rate: 0.0003
+  num_epochs: 5
+  total_timesteps: 524288
+  eval_freq: 16384
+  eps_start: 1
+  eps_end: 0.05
+  exploration_fraction: 0.5
+  gamma: 0.99
+  lambda_: 0.9
+  normalize_observations: false

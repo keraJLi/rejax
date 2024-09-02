@@ -9,11 +9,14 @@ from rejax import get_algo
 
 
 def main(algo_str, config, seed_id, num_seeds, time_fit):
-    algo, config_cls = get_algo(algo_str)
-    old_train_config = config_cls.create(**config)
+    algo_cls = get_algo(algo_str)
+    algo = algo_cls.create(**config)
+    print(algo.config)
 
-    def eval_callback(config, ts, rng):
-        lengths, returns = old_train_config.eval_callback(config, ts, rng)
+    old_eval_callback = algo.eval_callback
+
+    def eval_callback(algo, ts, rng):
+        lengths, returns = old_eval_callback(algo, ts, rng)
         jax.debug.print(
             "Step {}, Mean episode length: {}, Mean return: {}",
             ts.global_step,
@@ -22,17 +25,19 @@ def main(algo_str, config, seed_id, num_seeds, time_fit):
         )
         return lengths, returns
 
-    train_config = old_train_config.replace(eval_callback=eval_callback)
+    algo = algo.replace(eval_callback=eval_callback)
 
     # Train it
     key = jax.random.PRNGKey(seed_id)
     keys = jax.random.split(key, num_seeds)
 
-    vmap_train = jax.jit(jax.vmap(algo.train, in_axes=(None, 0)))
-    _, (_, returns) = vmap_train(train_config, keys)
+    vmap_train = jax.jit(jax.vmap(algo_cls.train, in_axes=(None, 0)))
+    ts, (_, returns) = vmap_train(algo, keys)
+    returns.block_until_ready()
+
     print(f"Achieved mean return of {returns.mean(axis=-1)[:, -1]}")
 
-    t = jnp.arange(returns.shape[1]) * train_config.eval_freq
+    t = jnp.arange(returns.shape[1]) * algo.eval_freq
     colors = plt.cm.cool(jnp.linspace(0, 1, num_seeds))
     for i in range(num_seeds):
         plt.plot(t, returns.mean(axis=-1)[i], c=colors[i])
@@ -42,13 +47,16 @@ def main(algo_str, config, seed_id, num_seeds, time_fit):
         print("Fitting 3 times, getting a mean time of... ", end="", flush=True)
 
         def time_fn():
-            return vmap_train(train_config, keys)
+            return vmap_train(algo, keys)
 
         time = timeit.timeit(time_fn, number=3) / 3
         print(
             f"{time:.1f} seconds total, equalling to "
             f"{time / num_seeds:.1f} seconds per seed"
         )
+
+    # Move local variables to global scope for debugging (run with -i)
+    globals().update(locals())
 
 
 if __name__ == "__main__":

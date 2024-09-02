@@ -1,0 +1,85 @@
+ppo:
+  env: MountainCarContinuous-v0
+  agent_kwargs:
+    activation: relu
+  num_envs: 5
+  num_steps: 100
+  num_epochs: 10
+  num_minibatches: 10
+  learning_rate: 0.0003
+  max_grad_norm: 10
+  total_timesteps: 200_000
+  eval_freq: 2000
+  gamma: 0.9
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+
+
+sac:
+  env: MountainCarContinuous-v0
+  agent_kwargs:
+    activation: swish
+  num_envs: 32
+  buffer_size: 10_000
+  fill_buffer: 256
+  batch_size: 256
+  learning_rate: 0.005
+  num_epochs: 32
+  total_timesteps: 50_000
+  eval_freq: 5_000
+  gamma: 0.99
+  polyak: 0.99
+  target_entropy_ratio: null
+
+
+ddpg:
+  env: MountainCarContinuous-v0
+  agent_kwargs:
+    activation: tanh
+  num_envs: 1
+  buffer_size: 5_000
+  fill_buffer: 1000
+  batch_size: 100
+  learning_rate: 0.001
+  num_epochs: 1
+  total_timesteps: 10_000
+  eval_freq: 100
+  gamma: 0.98
+  polyak: 0.995
+  max_grad_norm: 10
+  exploration_noise: 0.2
+
+
+td3:
+  env: MountainCarContinuous-v0
+  actor_kwargs:
+      activation: relu
+  critic_kwargs:
+      activation: relu
+  buffer_size: 10_000
+  fill_buffer: 1000
+  batch_size: 100
+  learning_rate: 0.002
+  total_timesteps: 10_000
+  eval_freq: 100
+  gamma: 0.98
+  polyak: 0.995
+  max_grad_norm: 10
+  exploration_noise: 0.2
+  target_noise: 0.2
+  target_noise_clip: 0.5
+  policy_delay: 2
+
+es:
+  env: MountainCarContinuous-v0
+  agent_kwargs:
+    features: [32]
+    use_bias: true
+  num_generations: 100
+  eval_freq: 1
+  strategy: SNES
+  strategy_kwargs:
+    popsize: 50
+  num_rollouts: 8

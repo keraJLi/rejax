@@ -1,0 +1,95 @@
+sac:
+  env: navix/Navix-SimpleCrossingS9N1-v0
+  agent_kwargs:
+    activation: tanh
+  num_envs: 128
+  buffer_size: 131_072
+  fill_buffer: 8_192
+  batch_size: 1028
+  learning_rate: 0.0003
+  num_epochs: 128
+  total_timesteps: 1_048_576
+  eval_freq: 131_072
+  gamma: 0.8
+  polyak: 0.9
+  target_entropy_ratio: 0.6
+  normalize_observations: true
+
+ppo:
+  env: navix/Navix-SimpleCrossingS9N1-v0
+  agent_kwargs:
+    activation: swish
+  num_envs: 64
+  num_steps: 128
+  num_epochs: 4
+  num_minibatches: 4
+  learning_rate: 0.0003
+  max_grad_norm: 0.5
+  total_timesteps: 1_048_576
+  eval_freq: 262_144
+  gamma: 0.99
+  gae_lambda: 0.9
+  clip_eps: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  normalize_observations: true
+
+dqn:
+  env: navix/Navix-SimpleCrossingS9N1-v0
+  agent_kwargs:
+    activation: tanh
+  num_envs: 128
+  num_epochs: 128
+  buffer_size: 131_072
+  fill_buffer: 8_192
+  batch_size: 512
+  learning_rate: 0.0003
+  max_grad_norm: 1
+  total_timesteps: 1_048_576
+  eval_freq: 131_072
+  gamma: 0.95
+  eps_start: 1.0
+  eps_end: 0.05
+  exploration_fraction: 0.3
+  target_update_freq: 512
+  ddqn: true
+  normalize_observations: false
+
+iqn:
+  env: navix/Navix-SimpleCrossingS9N1-v0
+  agent_kwargs:
+    activation: tanh
+  num_envs: 128
+  num_epochs: 128
+  buffer_size: 131072
+  fill_buffer: 8192
+  batch_size: 128
+  learning_rate: 0.0003
+  kappa: 2.0
+  num_tau_samples: 32
+  num_tau_prime_samples: 64
+  total_timesteps: 1048576
+  eval_freq: 131072
+  gamma: 0.9
+  eps_start: 1.0
+  eps_end: 0.05
+  exploration_fraction: 0.1
+  target_update_freq: 1024
+  normalize_observations: true
+
+pqn:
+  env: navix/Navix-SimpleCrossingS9N1-v0
+  total_timesteps: 1048576
+  eval_freq: 262144
+  eps_start: 1
+  num_envs: 128
+  num_steps: 16
+  num_epochs: 2
+  num_minibatches: 128
+  learning_rate: 0.00010374477955901192
+  max_grad_norm: 1
+  eps_end: 0.05
+  exploration_fraction: 0.2
+  gamma: 0.99
+  lambda_: 0.8
+  normalize_observations: true

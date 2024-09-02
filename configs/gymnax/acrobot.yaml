@@ -1,0 +1,103 @@
+ppo:
+  env: Acrobot-v1
+  agent_kwargs:
+    activation: tanh
+  num_envs: 5
+  num_steps: 100
+  num_epochs: 5
+  num_minibatches: 5
+  learning_rate: 0.00075
+  max_grad_norm: 0.5
+  total_timesteps: 100_000
+  eval_freq: 1000
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  normalize_observations: true
+
+dqn:
+  env: Acrobot-v1
+  agent: DuelingQNetwork
+  agent_kwargs:
+    activation: swish
+  num_envs: 10
+  buffer_size: 10_000
+  fill_buffer: 1000
+  batch_size: 100
+  max_grad_norm: 10
+  learning_rate: 0.001
+  num_epochs: 5
+  total_timesteps: 100_000
+  eval_freq: 2_500
+  target_update_freq: 200
+  eps_start: 1
+  eps_end: 0.05
+  exploration_fraction: 0.5
+  gamma: 0.99
+  ddqn: true
+  normalize_observations: false
+
+iqn:
+  env: Acrobot-v1
+  agent_kwargs:
+    activation: swish
+  num_envs: 10
+  buffer_size: 100_000
+  fill_buffer: 1000
+  batch_size: 100
+  max_grad_norm: 10
+  learning_rate: 0.0003
+  num_epochs: 5
+  total_timesteps: 100_000
+  eval_freq: 5000
+  target_update_freq: 500
+  eps_start: 1
+  eps_end: 0.01
+  exploration_fraction: 0.5
+  gamma: 0.99
+  normalize_observations: false
+
+sac:
+  env: Acrobot-v1
+  agent_kwargs:
+    activation: tanh
+  num_envs: 5
+  buffer_size: 10_000
+  fill_buffer: 1000
+  batch_size: 256
+  learning_rate: 0.001
+  num_epochs: 2
+  total_timesteps: 50_000
+  eval_freq: 500
+  gamma: 0.99
+  polyak: 0.95
+  target_entropy_ratio: 0.1
+  normalize_observations: false
+
+es:
+  env: Acrobot-v1
+  num_generations: 5
+  eval_freq: 1
+  strategy: SNES
+  strategy_kwargs:
+    popsize: 50
+  num_rollouts: 8
+
+pqn:
+  env: Acrobot-v1
+  num_envs: 16
+  num_steps: 128
+  num_minibatches: 16
+  max_grad_norm: 10
+  learning_rate: 0.0003
+  num_epochs: 5
+  total_timesteps: 524288
+  eval_freq: 16384
+  eps_start: 1
+  eps_end: 0.05
+  exploration_fraction: 0.5
+  gamma: 0.99
+  lambda_: 0.9
+  normalize_observations: false

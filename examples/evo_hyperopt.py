@@ -8,6 +8,9 @@ hyperparameters.
 In order to efficiently calculate the fitness of a whole population, we are vmapping
 both over all sampled hyperparameter combinations, as well as several random seeds per
 combination to reduce variance in our fitness estimate.
+
+Running this example takes some time, ~20 minutes on my laptop. Feel free to reduce the
+population size and number of evaluation seeds to make it faster.
 """
 
 from functools import partial
@@ -20,29 +23,35 @@ from rejax import get_algo
 
 NUM_GENERATIONS = 10
 POPULATION_SIZE = 10
-EVAL_SEEDS = 10
+EVAL_SEEDS = 5
 
-# Load SAC agent's train function and config
-algo, config_cls = get_algo("sac")
+# Load SAC
+algo_cls = get_algo("sac")
 
-# Static parameters, cannot be vmapped (except target_entropy_ratio, which is unused)
+# fmt: off
+# Static parameters, cannot be vmapped
 static_params = {
     "env": "Pendulum-v1",
+
+    # Time steps: we only care about the final performance
     "total_timesteps": 10_000,
+    "eval_freq": 10_000,
+    "skip_initial_evaluation": True,
+
+    # Other hyperparameters
     "buffer_size": 2000,
     "fill_buffer": 1000,
     "batch_size": 256,
-    "eval_freq": 10_000,  # We only care about the final performance
-    "num_envs": 1,  # Matching the original SAC formulation
-    "gradient_steps": 1,  # Matching the original SAC formulation
-    "target_entropy_ratio": 0,  # unused
+    "num_envs": 1,    # Matching the original SAC formulation
+    "num_epochs": 1,  # Matching the original SAC formulation
 }
+# fmt: on
 
 # Parameters to optimize, can be vmapped. Initilize with educated guesses
 optim_params = {
     "learning_rate": 0.001,
     "gamma": 1.0,
-    "tau": 0.95,
+    "polyak": 0.95,
 }
 
 
@@ -51,8 +60,8 @@ optim_params = {
 @partial(jax.vmap, in_axes=(0, None))
 @partial(jax.vmap, in_axes=(None, 0))
 def evaluate_fitness(meta_params, rng):
-    config = config_cls.create(**static_params, **meta_params)
-    train_state, (lenghts, returns) = algo.train(config, rng)
+    algo = algo_cls.create(**static_params, **meta_params)
+    train_state, (lenghts, returns) = algo.train(rng)
 
     # Take mean over evaluation seeds and calculate fitness as final return
     fitness = returns.mean(axis=1)[-1]
@@ -71,7 +80,10 @@ es_params = strategy.default_params.replace(clip_min=1e-10, clip_max=1)
 state = strategy.initialize(rng, es_params, init_mean=optim_params)
 
 # Run a few generations of ES
-print(f"Running {NUM_GENERATIONS} generations with {POPULATION_SIZE} members each")
+print(
+    f"Running {NUM_GENERATIONS} generations with {POPULATION_SIZE} members each, "
+    f"evaluating each member on {EVAL_SEEDS} training seeds."
+)
 for t in range(1, NUM_GENERATIONS + 1):
     start_time = time()
     rng, rng_gen, rng_eval = jax.random.split(rng, 3)

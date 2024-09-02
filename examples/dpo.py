@@ -7,7 +7,7 @@ the update of PPO to be the one from "Discovered Policy Optimisation" by Chris L
 import jax
 from jax import numpy as jnp
 
-from rejax import PPO, PPOConfig
+from rejax import PPO
 
 
 def dpo_drift(ratio, advantages, alpha=2.0, beta=0.6):
@@ -25,10 +25,9 @@ def dpo_drift(ratio, advantages, alpha=2.0, beta=0.6):
 
 # Overwrite PPO to change actor update, modifying the loss function
 class DPO(PPO):
-    @classmethod
-    def update_actor(cls, config, ts, batch):
+    def update_actor(self, ts, batch):
         def actor_loss_fn(params):
-            log_prob, entropy = config.actor.apply(
+            log_prob, entropy = self.actor.apply(
                 params,
                 batch.trajectories.obs,
                 batch.trajectories.action,
@@ -44,15 +43,15 @@ class DPO(PPO):
             drift = dpo_drift(ratio, advantages)
             pi_loss = -(ratio * advantages - drift).mean()
 
-            return pi_loss - config.ent_coef * entropy
+            return pi_loss - self.ent_coef * entropy
 
         grads = jax.grad(actor_loss_fn)(ts.actor_ts.params)
         return ts.replace(actor_ts=ts.actor_ts.apply_gradients(grads=grads))
 
 
-config = PPOConfig.create(
+algo = PPO.create(
     env="Pendulum-v1",
-    total_timesteps=250_000,
+    total_timesteps=1_000_000,
     eval_freq=5000,
     num_envs=50,
     num_steps=100,
@@ -67,7 +66,7 @@ config = PPOConfig.create(
     vf_coef=0.5,
 )
 
-eval_callback = config.eval_callback
+eval_callback = algo.eval_callback
 
 
 def eval_with_print(c, ts, rng):
@@ -76,5 +75,5 @@ def eval_with_print(c, ts, rng):
     return ()
 
 
-config = config.replace(eval_callback=eval_with_print)
-DPO.train(config, jax.random.PRNGKey(0))
+algo = algo.replace(eval_callback=eval_with_print)
+DPO.train(algo, jax.random.PRNGKey(0))

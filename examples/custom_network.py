@@ -6,9 +6,9 @@ import jax
 from flax import linen as nn
 from jax import numpy as jnp
 
-from rejax import DQN, DQNConfig
-from rejax.algos.networks import EpsilonGreedyPolicy
-from rejax.evaluate import make_evaluate
+from rejax import DQN
+from rejax.evaluate import evaluate
+from rejax.networks import EpsilonGreedyPolicy
 
 
 class ConvDuelingQNetwork(nn.Module):
@@ -35,11 +35,11 @@ class ConvDuelingQNetwork(nn.Module):
         return jnp.take_along_axis(q_values, action[:, None], axis=1).squeeze(1)
 
 
-config = DQNConfig.create(
+algo = DQN.create(
     env="Freeway-MinAtar",
     total_timesteps=1_000_000,
     eval_freq=50_000,
-    gradient_steps=1,
+    num_epochs=1,
     learning_rate=0.00025,
     max_grad_norm=10,
     batch_size=32,
@@ -54,12 +54,11 @@ config = DQNConfig.create(
     ddqn=True,
 )
 
-evaluate = make_evaluate(DQN.make_act, config.env, config.env_params, 10)
-
 
 # Overwrite default evaluation callback to log episode lengths and returns
-def log_callback(config, train_state, rng):
-    lengths, returns = evaluate(config, train_state, rng)
+def log_callback(algo, train_state, rng):
+    act = algo.make_act(train_state)
+    lengths, returns = evaluate(act, rng, algo.env, algo.env_params, 200)
     jax.debug.print(
         "global step: {}, mean episode length: {} ± {}std, mean return: {} ± {}std",
         train_state.global_step,
@@ -72,10 +71,9 @@ def log_callback(config, train_state, rng):
 
 
 # We make a policy out of the Q-network to use it as an agent (that has an "act" method)
-action_dim = config.env.action_space(config.env_params).n
-agent = EpsilonGreedyPolicy(ConvDuelingQNetwork)(action_dim)
+agent = EpsilonGreedyPolicy(ConvDuelingQNetwork)(algo.action_dim)
 
 # Add custom network to config and train
 rng = jax.random.PRNGKey(0)
-config = config.replace(eval_callback=log_callback, agent=agent)
-jax.jit(DQN.train)(config, rng)
+algo = algo.replace(eval_callback=log_callback, agent=agent)
+jax.jit(algo.train)(rng)

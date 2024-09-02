@@ -1,12 +1,10 @@
 from functools import partial
-from typing import Any, Callable, NamedTuple, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Tuple
 
 import chex
 import jax
 import jax.numpy as jnp
 from gymnax.environments import environment
-
-from rejax.normalize import normalize_obs
 
 
 class EvalState(NamedTuple):
@@ -60,8 +58,8 @@ def evaluate(
     rng: chex.PRNGKey,
     env: environment.Environment,
     env_params: Any,
-    num_seeds: int,
-    max_steps_in_episode: int,
+    num_seeds: int = 128,
+    max_steps_in_episode: Optional[int] = None,
 ) -> Tuple[chex.Array, chex.Array]:
     """Evaluate a policy given by `act` on `num_seeds` environments.
 
@@ -78,17 +76,9 @@ def evaluate(
         Tuple[chex.Array, chex.Array]: Tuple of episode length and cumultative reward
         for each seed.
     """
-    seeds = jax.random.split(rng, num_seeds)
-    vmap_collect = jax.vmap(evaluate_single, in_axes=(None, None, None, 0, None))
-    return vmap_collect(act, env, env_params, seeds, max_steps_in_episode)
-
-
-def make_evaluate(make_act, env, env_params, num_seeds, max_steps_in_episode=None):
     if max_steps_in_episode is None:
         max_steps_in_episode = env_params.max_steps_in_episode
 
-    def _evaluate(config, ts, rng):
-        act = make_act(config, ts)
-        return evaluate(act, rng, env, env_params, num_seeds, max_steps_in_episode)
-
-    return _evaluate
+    seeds = jax.random.split(rng, num_seeds)
+    vmap_collect = jax.vmap(evaluate_single, in_axes=(None, None, None, 0, None))
+    return vmap_collect(act, env, env_params, seeds, max_steps_in_episode)
