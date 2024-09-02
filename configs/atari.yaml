@@ -1,0 +1,22 @@
+pqn:
+  # Parameters from the original paper
+  env: "Pong-v5"
+  env_params:
+    episodic_life: true
+    reward_clip: true
+    repeat_action_probability: 0.0
+    frame_skip: 4
+    noop_max: 30
+
+  total_timesteps: 40108032
+  eval_freq: 131072
+  num_envs: 128
+  num_steps: 32
+  eps_start: 1.0
+  eps_end: 0.001
+  exploration_fraction: 0.1
+  num_epochs: 2
+  num_minibatches: 32
+  learning_rate: 0.00025
+  max_grad_norm: 10
+  td_lambda: 0.65
