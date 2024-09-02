@@ -54,8 +54,8 @@ class TD3(
 
         return act
 
-    @staticmethod
-    def create_agent(config, env, env_params):
+    @classmethod
+    def create_agent(cls, config, env, env_params):
         actor_kwargs = config.pop("actor_kwargs", {})
         activation = actor_kwargs.pop("activation", "swish")
         actor_kwargs["activation"] = getattr(nn, activation)
