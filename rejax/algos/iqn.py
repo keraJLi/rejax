@@ -10,8 +10,12 @@ from flax.training.train_state import TrainState
 from jax import numpy as jnp
 
 from rejax.algos.algorithm import Algorithm, register_init
-from rejax.algos.mixins import (EpsilonGreedyMixin, NormalizeObservationsMixin,
-                                ReplayBufferMixin, TargetNetworkMixin)
+from rejax.algos.mixins import (
+    EpsilonGreedyMixin,
+    NormalizeObservationsMixin,
+    ReplayBufferMixin,
+    TargetNetworkMixin,
+)
 from rejax.buffers import Minibatch
 from rejax.networks import ImplicitQuantileNetwork
 
@@ -57,8 +61,8 @@ class IQN(
 
         return act
 
-    @staticmethod
-    def create_agent(config, env, env_params):
+    @classmethod
+    def create_agent(cls, config, env, env_params):
         agent_kwargs = config.pop("agent_kwargs", {})
         activation = agent_kwargs.pop("activation", "swish")
         agent_kwargs["activation"] = getattr(nn, activation)

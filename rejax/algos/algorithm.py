@@ -35,14 +35,13 @@ class Algorithm(struct.PyTreeNode):
 
     @classmethod
     def create(cls, **config):
-        config = deepcopy(config)
         env, env_params = cls.create_env(config)
         agent = cls.create_agent(config, env, env_params)
 
         def eval_callback(algo, ts, rng):
             act = algo.make_act(ts)
             max_steps = algo.env_params.max_steps_in_episode
-            return evaluate(act, rng, env, env_params, 200, max_steps)
+            return evaluate(act, rng, env, env_params, 128, max_steps)
 
         return cls(
             env=env,
@@ -71,8 +70,8 @@ class Algorithm(struct.PyTreeNode):
     def init_base_state(self, rng: chex.PRNGKey):
         return {"rng": rng}
 
-    @staticmethod
-    def create_env(config):
+    @classmethod
+    def create_env(cls, config):
         if isinstance(config["env"], str):
             env, env_params = create(config.pop("env"), **config.pop("env_params", {}))
         else:
@@ -80,8 +79,8 @@ class Algorithm(struct.PyTreeNode):
             env_params = config.pop("env_params", env.default_params)
         return env, env_params
 
-    @staticmethod
-    def create_agent(config, env, env_params):
+    @classmethod
+    def create_agent(cls, config, env, env_params):
         raise NotImplementedError
 
     @property

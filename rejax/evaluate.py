@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Callable, NamedTuple, Tuple
+from typing import Any, Callable, NamedTuple, Optional, Tuple
 
 import chex
 import jax
@@ -59,7 +59,7 @@ def evaluate(
     env: environment.Environment,
     env_params: Any,
     num_seeds: int = 128,
-    max_steps_in_episode: int = None,
+    max_steps_in_episode: Optional[int] = None,
 ) -> Tuple[chex.Array, chex.Array]:
     """Evaluate a policy given by `act` on `num_seeds` environments.
 

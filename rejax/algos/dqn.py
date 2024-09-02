@@ -40,8 +40,8 @@ class DQN(
 
         return act
 
-    @staticmethod
-    def create_agent(config, env, env_params):
+    @classmethod
+    def create_agent(cls, config, env, env_params):
         agent_name = config.pop("agent", "QNetwork")
         agent_cls = {
             "QNetwork": DiscreteQNetwork,

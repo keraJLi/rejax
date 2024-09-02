@@ -25,7 +25,6 @@ def main(algo_str, config, seed_id, num_seeds, time_fit):
         )
         return lengths, returns
 
-    # ppo.eval_callback = eval_callback
     algo = algo.replace(eval_callback=eval_callback)
 
     # Train it
@@ -33,13 +32,10 @@ def main(algo_str, config, seed_id, num_seeds, time_fit):
     keys = jax.random.split(key, num_seeds)
 
     vmap_train = jax.jit(jax.vmap(algo_cls.train, in_axes=(None, 0)))
-
-    # with jax.profiler.trace("/tmp/tensorboard"):
     ts, (_, returns) = vmap_train(algo, keys)
     returns.block_until_ready()
 
     print(f"Achieved mean return of {returns.mean(axis=-1)[:, -1]}")
-    # return
 
     t = jnp.arange(returns.shape[1]) * algo.eval_freq
     colors = plt.cm.cool(jnp.linspace(0, 1, num_seeds))
@@ -59,7 +55,7 @@ def main(algo_str, config, seed_id, num_seeds, time_fit):
             f"{time / num_seeds:.1f} seconds per seed"
         )
 
-    # Move local variables to global scope for debugging
+    # Move local variables to global scope for debugging (run with -i)
     globals().update(locals())
 
 

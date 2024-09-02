@@ -48,9 +48,8 @@ class PPO(OnPolicyMixin, NormalizeObservationsMixin, Algorithm):
 
         return act
 
-    @staticmethod
-    def create_agent(config, env, env_params):
-
+    @classmethod
+    def create_agent(cls, config, env, env_params):
         action_space = env.action_space(env_params)
         discrete = isinstance(action_space, gymnax.environments.spaces.Discrete)
 

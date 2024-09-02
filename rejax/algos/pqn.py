@@ -53,8 +53,8 @@ class PQN(OnPolicyMixin, EpsilonGreedyMixin, NormalizeObservationsMixin, Algorit
 
         return act
 
-    @staticmethod
-    def create_agent(config, env, env_params):
+    @classmethod
+    def create_agent(cls, config, env, env_params):
         agent_kwargs = config.pop("agent_kwargs", {})
         agent_kwargs["activation"] = lambda x: nn.relu(nn.LayerNorm()(x))
 
