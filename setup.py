@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setup(
     name="rejax",
-    version="0.0.1",
+    version="0.1.0",
     url="https://github.com/keraJLi/rejax",
     author="Jarek Liesen",
     description="Lightweight library of RL algorithms in Jax",
