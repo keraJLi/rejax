@@ -24,6 +24,7 @@ compat = [
     "brax>=0.11.0",
     "craftax>=1.4.3",
     "navix>=0.7.0",
+    "jumanji>=1.0.1",
 ]
 [build-system]
 requires = ["pdm-backend"]
