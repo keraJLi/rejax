@@ -1,6 +1,6 @@
 [project]
 name = "rejax"
-version = "0.1.0"
+version = "0.1.1"
 description = "Vectorizable RL algorithms in pure JAX"
 authors = [
     {name = "Jarek Liesen", email = ""},
