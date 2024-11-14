@@ -81,15 +81,6 @@ sac:
   polyak: 0.95
   target_entropy_ratio: 0.7
 
-es:
-  env: CartPole-v1
-  num_generations: 5
-  eval_freq: 1
-  strategy: SNES
-  strategy_kwargs:
-    popsize: 50
-  num_rollouts: 8
-
 
 pqn:
   env: CartPole-v1
@@ -105,5 +96,5 @@ pqn:
   eps_end: 0.05
   exploration_fraction: 0.5
   gamma: 0.99
-  lambda_: 0.9
+  td_lambda: 0.9
   normalize_observations: false

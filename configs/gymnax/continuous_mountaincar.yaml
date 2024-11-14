@@ -34,24 +34,6 @@ sac:
   target_entropy_ratio: null
 
 
-ddpg:
-  env: MountainCarContinuous-v0
-  agent_kwargs:
-    activation: tanh
-  num_envs: 1
-  buffer_size: 5_000
-  fill_buffer: 1000
-  batch_size: 100
-  learning_rate: 0.001
-  num_epochs: 1
-  total_timesteps: 10_000
-  eval_freq: 100
-  gamma: 0.98
-  polyak: 0.995
-  max_grad_norm: 10
-  exploration_noise: 0.2
-
-
 td3:
   env: MountainCarContinuous-v0
   actor_kwargs:
@@ -71,15 +53,3 @@ td3:
   target_noise: 0.2
   target_noise_clip: 0.5
   policy_delay: 2
-
-es:
-  env: MountainCarContinuous-v0
-  agent_kwargs:
-    features: [32]
-    use_bias: true
-  num_generations: 100
-  eval_freq: 1
-  strategy: SNES
-  strategy_kwargs:
-    popsize: 50
-  num_rollouts: 8

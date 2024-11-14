@@ -91,5 +91,5 @@ pqn:
   eps_end: 0.1
   exploration_fraction: 0.3
   gamma: 0.8
-  lambda_: 0.2
+  td_lambda: 0.2
   normalize_observations: true
