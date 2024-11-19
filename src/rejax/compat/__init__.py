@@ -6,6 +6,7 @@ _create_fns = {
     "brax": ("rejax.compat.brax2gymnax", "create_brax"),
     "navix": ("rejax.compat.navix2gymnax", "create_navix"),
     "jumanji": ("rejax.compat.jumanji2gymnax", "create_jumanji"),
+    "gymnasium": ("rejax.compat.gymnasium2gymnax", "create_gymnasium"),
 }
 
 
