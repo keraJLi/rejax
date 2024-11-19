@@ -36,22 +36,3 @@ ppo:
   ent_coef: 0.01
   vf_coef: 0.5
   normalize_observations: true
-
-
-# tuned
-ddpg:
-  env: brax/ant
-  agent_kwargs:
-    activation: tanh
-  num_envs: 128
-  buffer_size: 1048576
-  fill_buffer: 8192
-  batch_size: 512
-  learning_rate: 0.00020399223998555615
-  num_epochs: 128
-  total_timesteps: 5242880
-  eval_freq: 32768
-  gamma: 0.95
-  polyak: 0.99
-  max_grad_norm: 0.1
-  exploration_noise: 0.5

@@ -39,26 +39,6 @@ ppo:
 
 
 # tuned
-ddpg:
-  env: brax/swimmer
-  agent_kwargs:
-    activation: tanh
-  num_envs: 128
-  buffer_size: 1048576
-  fill_buffer: 8192
-  batch_size: 128
-  learning_rate: 0.000468696655640884
-  num_epochs: 128
-  total_timesteps: 5242880
-  eval_freq: 32768
-  gamma: 0.995
-  polyak: 0.995
-  max_grad_norm: 0.1
-  exploration_noise: 0.9
-  normalize_observations: false
-
-
-# tuned
 td3:
   env: brax/swimmer
   actor_kwargs:

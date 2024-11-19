@@ -39,26 +39,6 @@ ppo:
 
 
 # tuned
-ddpg:
-  env: brax/walker2d
-  agent_kwargs:
-    activation: tanh
-  num_envs: 128
-  buffer_size: 1048576
-  fill_buffer: 8192
-  batch_size: 512
-  learning_rate: 0.00014524424253732564
-  num_epochs: 128
-  total_timesteps: 5242880
-  eval_freq: 32768
-  gamma: 0.995
-  polyak: 0.98
-  max_grad_norm: 1
-  exploration_noise: 0.2
-  normalize_observations: true
-
-
-# tuned
 td3:
   env: brax/walker2d
   actor_kwargs:
