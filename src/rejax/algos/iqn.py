@@ -13,6 +13,7 @@ from rejax.algos.algorithm import Algorithm, register_init
 from rejax.algos.mixins import (
     EpsilonGreedyMixin,
     NormalizeObservationsMixin,
+    NormalizeRewardsMixin,
     ReplayBufferMixin,
     TargetNetworkMixin,
 )
@@ -40,6 +41,7 @@ class IQN(
     ReplayBufferMixin,
     TargetNetworkMixin,
     NormalizeObservationsMixin,
+    NormalizeRewardsMixin,
     Algorithm,
 ):
     agent: nn.Module = struct.field(pytree_node=False, default=None)
@@ -51,7 +53,7 @@ class IQN(
     def make_act(self, ts):
         def act(obs, rng):
             if self.normalize_observations:
-                obs = self.normalize_obs(ts.rms_state, obs)
+                obs = self.normalize(ts.obs_rms_state, obs)
 
             obs = jnp.expand_dims(obs, 0)
             action = self.agent.apply(
@@ -106,8 +108,8 @@ class IQN(
             minibatch = ts.replay_buffer.sample(self.batch_size, rng_sample)
             if self.normalize_observations:
                 minibatch = minibatch._replace(
-                    obs=self.normalize_obs(ts.rms_state, minibatch.obs),
-                    next_obs=self.normalize_obs(ts.rms_state, minibatch.next_obs),
+                    obs=self.normalize(ts.obs_rms_state, minibatch.obs),
+                    next_obs=self.normalize(ts.obs_rms_state, minibatch.next_obs),
                 )
 
             # Update network
@@ -148,7 +150,7 @@ class IQN(
 
         def sample_policy(rng):
             if self.normalize_observations:
-                last_obs = self.normalize_obs(ts.rms_state, ts.last_obs)
+                last_obs = self.normalize(ts.obs_rms_state, ts.last_obs)
             else:
                 last_obs = ts.last_obs
 
@@ -165,7 +167,9 @@ class IQN(
             rng_steps, ts.env_state, actions, self.env_params
         )
         if self.normalize_observations:
-            ts = ts.replace(rms_state=self.update_rms(ts.rms_state, next_obs))
+            ts = ts.replace(obs_rms_state=self.update_rms(ts.obs_rms_state, next_obs))
+        if self.normalize_rewards:
+            ts = ts.replace(rew_rms_state=self.update_rms(ts.rew_rms_state, rewards))
 
         minibatch = Minibatch(
             obs=ts.last_obs,
@@ -182,6 +186,12 @@ class IQN(
         return ts, minibatch
 
     def update(self, ts, mb):
+        # Normalize rewards
+        if self.normalize_rewards:
+            rewards = self.normalize(ts.rew_rms_state, mb.reward)
+        else:
+            rewards = mb.reward
+
         # Move tau to axis 1, leaving batch as leading axis
         vmapped_apply = jax.vmap(self.agent.apply, in_axes=(None, None, 0), out_axes=1)
 
@@ -197,7 +207,7 @@ class IQN(
         zs, _ = vmapped_apply(ts.q_ts.params, mb.next_obs, rng_tau_prime)
         best_z = jnp.take_along_axis(zs, best_action[:, None, None], axis=2).squeeze(2)
 
-        targets = mb.reward[:, None] + self.gamma * (1 - mb.done[:, None]) * best_z
+        targets = rewards[:, None] + self.gamma * (1 - mb.done[:, None]) * best_z
         assert targets.shape == (
             self.batch_size,
             self.num_tau_prime_samples,
@@ -211,27 +221,19 @@ class IQN(
             return jnp.abs(tau - (td_err < 0)) * l / self.kappa
 
         def loss_fn(q_params):
+            # tau has shape (batch, num_tau_samples)
             z, tau = vmapped_apply(q_params, mb.obs, rng_tau)
-            z = jnp.take_along_axis(z, mb.action[:, None, None], axis=2).squeeze(2)
-            assert z.shape == (self.batch_size, self.num_tau_samples), z.shape
 
+            # after taking actions, z has shape (batch, num_tau_samples, action_dim)
+            z = jnp.take_along_axis(z, mb.action[:, None, None], axis=2).squeeze(2)
+
+            # td_err has shape (batch, num_tau_samples, num_tau_prime_samples)
             td_err = jax.vmap(lambda x, y: x[None, :] - y[:, None])(targets, z)
 
-            assert td_err.shape == (
-                self.batch_size,
-                self.num_tau_samples,
-                self.num_tau_prime_samples,
-            )
-            assert tau.shape == (self.batch_size, self.num_tau_samples)
-            assert rho(td_err, tau).shape == (
-                self.batch_size,
-                self.num_tau_samples,
-                self.num_tau_prime_samples,
-            )
+            # before sum, loss has shape (batch, num_tau_samples, num_tau_prime_samples)
             loss = rho(td_err, tau).sum(axis=1)
             return loss.mean()
 
         grads = jax.grad(loss_fn)(ts.q_ts.params)
-        # jax.debug.print("grads {}", jnp.abs(jnp.hstack([a.ravel() for a in jax.tree_leaves(grads)])).mean())
         ts = ts.replace(q_ts=ts.q_ts.apply_gradients(grads=grads))
         return ts

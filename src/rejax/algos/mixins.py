@@ -1,3 +1,5 @@
+from functools import partial
+
 import chex
 import jax
 import numpy as np
@@ -183,16 +185,31 @@ class RMSState:
         )
 
 
-class NormalizeObservationsMixin(struct.PyTreeNode):
-    normalize_observations: bool = struct.field(pytree_node=False, default=False)
+class FloatObsWrapper:
+    def __init__(self, env):
+        self.env = env
 
-    @register_init
-    def initialize_rms_state(self, rng):
-        obs_shape = (1, *self.env.observation_space(self.env_params).shape)
-        return {"rms_state": RMSState.create(obs_shape)}
+    def __getattr__(self, name):
+        if name in ["env", "reset", "step"]:
+            return super().__getattr__(name)
+        return getattr(self.env, name)
 
-    def update_rms(self, rms_state, obs, batched=True):
-        batch = obs if batched else jnp.expand_dims(obs, 0)
+    @partial(jax.jit, static_argnums=(0,))
+    def step(self, key, state, action, params):
+        obs, state, reward, done, info = self.env.step(key, state, action, params)
+        obs = obs.astype(float)
+        return obs, state, reward, done, info
+
+    @partial(jax.jit, static_argnums=(0,))
+    def reset(self, key, params):
+        obs, state = self.env.reset(key, params)
+        obs = obs.astype(float)
+        return obs, state
+
+
+class NormalizationMixinBase(struct.PyTreeNode):
+    def update_rms(self, rms_state, x, batched=True):
+        batch = x if batched else jnp.expand_dims(x, 0)
 
         batch_count = batch.shape[0]
         batch_mean, batch_var = batch.mean(axis=0), batch.var(axis=0)
@@ -209,9 +226,33 @@ class NormalizeObservationsMixin(struct.PyTreeNode):
 
         return RMSState(mean=new_mean, var=new_var, count=new_count)
 
-    def normalize_obs(self, rms_state, obs):
-        return (obs - rms_state.mean) / jnp.sqrt(rms_state.var + 1e-8)
+    def normalize(self, rms_state, x):
+        return (x - rms_state.mean) / jnp.sqrt(rms_state.var + 1e-8)
 
-    def update_and_normalize(self, rms_state, obs, batched=True):
-        rms_state = self.update_rms(rms_state, obs, batched)
-        return rms_state, self.normalize_obs(rms_state, obs)
+    def update_and_normalize(self, rms_state, x, batched=True):
+        rms_state = self.update_rms(rms_state, x, batched)
+        return rms_state, self.normalize(rms_state, x)
+
+
+class NormalizeObservationsMixin(NormalizationMixinBase):
+    normalize_observations: bool = struct.field(pytree_node=False, default=False)
+
+    @classmethod
+    def create(self, **kwargs):
+        config = super().create(**kwargs)
+        if config.normalize_observations:
+            config = config.replace(env=FloatObsWrapper(config.env))
+        return config
+
+    @register_init
+    def initialize_obs_rms_state(self, rng):
+        obs_shape = self.env.observation_space(self.env_params).shape
+        return {"obs_rms_state": RMSState.create(obs_shape)}
+
+
+class NormalizeRewardsMixin(NormalizationMixinBase):
+    normalize_rewards: bool = struct.field(pytree_node=False, default=False)
+
+    @register_init
+    def initialize_reward_rms_state(self, rng):
+        return {"rew_rms_state": RMSState.create(())}

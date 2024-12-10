@@ -9,7 +9,11 @@ from flax.training.train_state import TrainState
 from jax import numpy as jnp
 
 from rejax.algos.algorithm import Algorithm, register_init
-from rejax.algos.mixins import NormalizeObservationsMixin, OnPolicyMixin
+from rejax.algos.mixins import (
+    NormalizeObservationsMixin,
+    NormalizeRewardsMixin,
+    OnPolicyMixin,
+)
 from rejax.networks import DiscretePolicy, GaussianPolicy, VNetwork
 
 
@@ -28,7 +32,7 @@ class AdvantageMinibatch(struct.PyTreeNode):
     targets: chex.Array
 
 
-class PPO(OnPolicyMixin, NormalizeObservationsMixin, Algorithm):
+class PPO(OnPolicyMixin, NormalizeObservationsMixin, NormalizeRewardsMixin, Algorithm):
     actor: nn.Module = struct.field(pytree_node=False, default=None)
     critic: nn.Module = struct.field(pytree_node=False, default=None)
     num_epochs: int = struct.field(pytree_node=False, default=8)
@@ -137,8 +141,15 @@ class PPO(OnPolicyMixin, NormalizeObservationsMixin, Algorithm):
             next_obs, env_state, reward, done, _ = t
 
             if self.normalize_observations:
-                rms_state, next_obs = self.update_and_normalize(ts.rms_state, next_obs)
-                ts = ts.replace(rms_state=rms_state)
+                obs_rms_state, next_obs = self.update_and_normalize(
+                    ts.obs_rms_state, next_obs
+                )
+                ts = ts.replace(obs_rms_state=obs_rms_state)
+            if self.normalize_rewards:
+                rew_rms_state, reward = self.update_and_normalize(
+                    ts.rew_rms_state, reward
+                )
+                ts = ts.replace(rew_rms_state=rew_rms_state)
 
             # Return updated runner state and transition
             transition = Trajectory(

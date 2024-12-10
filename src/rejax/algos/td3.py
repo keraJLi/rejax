@@ -10,6 +10,7 @@ from jax import numpy as jnp
 from rejax.algos.algorithm import Algorithm, register_init
 from rejax.algos.mixins import (
     NormalizeObservationsMixin,
+    NormalizeRewardsMixin,
     ReplayBufferMixin,
     TargetNetworkMixin,
 )
@@ -32,6 +33,7 @@ class TD3(
     ReplayBufferMixin,
     TargetNetworkMixin,
     NormalizeObservationsMixin,
+    NormalizeRewardsMixin,
     Algorithm,
 ):
     actor: nn.Module = struct.field(pytree_node=False, default=None)
@@ -46,7 +48,7 @@ class TD3(
     def make_act(self, ts):
         def act(obs, rng):
             if self.normalize_observations:
-                obs = self.normalize_obs(ts.rms_state, obs)
+                obs = self.normalize(ts.obs_rms_state, obs)
 
             obs = jnp.expand_dims(obs, 0)
             action = self.actor.apply(ts.actor_ts.params, obs)
@@ -173,8 +175,12 @@ class TD3(
             minibatch = ts.replay_buffer.sample(self.batch_size, rng_sample)
             if self.normalize_observations:
                 minibatch = minibatch._replace(
-                    obs=self.normalize_obs(ts.rms_state, minibatch.obs),
-                    next_obs=self.normalize_obs(ts.rms_state, minibatch.next_obs),
+                    obs=self.normalize(ts.obs_rms_state, minibatch.obs),
+                    next_obs=self.normalize(ts.obs_rms_state, minibatch.next_obs),
+                )
+            if self.normalize_rewards:
+                minibatch = minibatch._replace(
+                    reward=self.normalize(ts.rew_rms_state, minibatch.reward)
                 )
 
             # Update network
@@ -262,7 +268,9 @@ class TD3(
         )
 
         if self.normalize_observations:
-            ts = ts.replace(rms_state=self.update_rms(ts.rms_state, next_obs))
+            ts = ts.replace(obs_rms_state=self.update_rms(ts.obs_rms_state, next_obs))
+        if self.normalize_rewards:
+            ts = ts.replace(rew_rms_state=self.update_rms(ts.rew_rms_state, rewards))
 
         # Return minibatch and updated train state
         minibatch = Minibatch(

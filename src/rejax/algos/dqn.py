@@ -9,6 +9,7 @@ from rejax.algos.algorithm import Algorithm, register_init
 from rejax.algos.mixins import (
     EpsilonGreedyMixin,
     NormalizeObservationsMixin,
+    NormalizeRewardsMixin,
     ReplayBufferMixin,
     TargetNetworkMixin,
 )
@@ -21,6 +22,7 @@ class DQN(
     ReplayBufferMixin,
     TargetNetworkMixin,
     NormalizeObservationsMixin,
+    NormalizeRewardsMixin,
     Algorithm,
 ):
     agent: nn.Module = struct.field(pytree_node=False, default=None)
@@ -30,7 +32,7 @@ class DQN(
     def make_act(self, ts):
         def act(obs, rng):
             if getattr(self, "normalize_observations", False):
-                obs = self.normalize_obs(ts.rms_state, obs)
+                obs = self.normalize(ts.rms_state, obs)
 
             obs = jnp.expand_dims(obs, 0)
             action = self.agent.apply(
@@ -89,8 +91,8 @@ class DQN(
             minibatch = ts.replay_buffer.sample(self.batch_size, rng_sample)
             if self.normalize_observations:
                 minibatch = minibatch._replace(
-                    obs=self.normalize_obs(ts.rms_state, minibatch.obs),
-                    next_obs=self.normalize_obs(ts.rms_state, minibatch.next_obs),
+                    obs=self.normalize(ts.rms_state, minibatch.obs),
+                    next_obs=self.normalize(ts.rms_state, minibatch.next_obs),
                 )
 
             # Update network
@@ -132,7 +134,7 @@ class DQN(
 
         def sample_policy(rng):
             if self.normalize_observations:
-                last_obs = self.normalize_obs(ts.rms_state, ts.last_obs)
+                last_obs = self.normalize(ts.rms_state, ts.last_obs)
             else:
                 last_obs = ts.last_obs
 
@@ -149,7 +151,9 @@ class DQN(
             rng_steps, ts.env_state, actions, self.env_params
         )
         if self.normalize_observations:
-            ts = ts.replace(rms_state=self.update_rms(ts.rms_state, next_obs))
+            ts = ts.replace(obs_rms_state=self.update_rms(ts.obs_rms_state, next_obs))
+        if self.normalize_rewards:
+            ts = ts.replace(rew_rms_state=self.update_rms(ts.rew_rms_state, rewards))
 
         minibatch = Minibatch(
             obs=ts.last_obs,
@@ -167,6 +171,10 @@ class DQN(
 
     def update(self, ts, mb):
         next_q_target_values = self.agent.apply(ts.q_target_params, mb.next_obs)
+        if self.normalize_rewards:
+            rewards = self.normalize(ts.rew_rms_state, mb.reward)
+        else:
+            rewards = mb.reward
 
         def vanilla_targets(q_params):
             return jnp.max(next_q_target_values, axis=1)
@@ -185,7 +193,7 @@ class DQN(
                 self.ddqn, ddqn_targets, vanilla_targets, q_params
             )
             mask_done = jnp.logical_not(mb.done)
-            targets = mb.reward + mask_done * self.gamma * next_q_values_target
+            targets = rewards + mask_done * self.gamma * next_q_values_target
             loss = optax.l2_loss(q_values, targets).mean()
             return loss
 
