@@ -82,7 +82,10 @@ class TD3(
         obs_ph = jnp.empty((1, *self.env.observation_space(self.env_params).shape))
         action_ph = jnp.empty((1, *self.env.action_space(self.env_params).shape))
 
-        tx = optax.adam(learning_rate=self.learning_rate)
+        tx = optax.chain(
+            optax.clip(self.max_grad_norm),
+            optax.adam(learning_rate=self.learning_rate),
+        )
 
         actor_params = self.actor.init(rng_actor, obs_ph)
         actor_ts = TrainState.create(apply_fn=(), params=actor_params, tx=tx)

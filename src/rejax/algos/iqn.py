@@ -79,7 +79,10 @@ class IQN(
     def initialize_network_params(self, rng):
         obs_ph = jnp.empty([1, *self.env.observation_space(self.env_params).shape])
         q_params = self.agent.init(rng, obs_ph, rng)
-        tx = optax.adam(learning_rate=self.learning_rate)
+        tx = optax.chain(
+            optax.clip(self.max_grad_norm),
+            optax.adam(learning_rate=self.learning_rate),
+        )
         q_ts = TrainState.create(apply_fn=(), params=q_params, tx=tx)
         return {"q_ts": q_ts, "q_target_params": q_params}
 
