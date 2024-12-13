@@ -187,7 +187,7 @@ class TestEnvironmentsSAC(unittest.TestCase):
                 if discrete:
                     for i in range(num_rngs):
                         self.assertGreaterEqual(
-                            ((actions[:, i] > 0.5) ==  (obs[i] > 0)).sum(),
+                            ((actions[:, i] > 0.5) == (obs[i] > 0)).sum(),
                             0.9 * num_rngs,
                         )
                 else:

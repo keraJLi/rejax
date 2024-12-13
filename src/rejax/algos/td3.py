@@ -48,7 +48,7 @@ class TD3(
     def make_act(self, ts):
         def act(obs, rng):
             if self.normalize_observations:
-                obs = self.normalize(ts.obs_rms_state, obs)
+                obs = self.normalize_obs(ts.obs_rms_state, obs)
 
             obs = jnp.expand_dims(obs, 0)
             action = self.actor.apply(ts.actor_ts.params, obs)
@@ -175,12 +175,12 @@ class TD3(
             minibatch = ts.replay_buffer.sample(self.batch_size, rng_sample)
             if self.normalize_observations:
                 minibatch = minibatch._replace(
-                    obs=self.normalize(ts.obs_rms_state, minibatch.obs),
-                    next_obs=self.normalize(ts.obs_rms_state, minibatch.next_obs),
+                    obs=self.normalize_obs(ts.obs_rms_state, minibatch.obs),
+                    next_obs=self.normalize_obs(ts.obs_rms_state, minibatch.next_obs),
                 )
             if self.normalize_rewards:
                 minibatch = minibatch._replace(
-                    reward=self.normalize(ts.rew_rms_state, minibatch.reward)
+                    reward=self.normalize_rew(ts.rew_rms_state, minibatch.reward)
                 )
 
             # Update network
@@ -248,7 +248,7 @@ class TD3(
 
         def sample_policy(rng):
             if self.normalize_observations:
-                last_obs = self.normalize_obs(ts.rms_state, ts.last_obs)
+                last_obs = self.normalize_obs(ts.obs_rms_state, ts.last_obs)
             else:
                 last_obs = ts.last_obs
 
@@ -268,9 +268,13 @@ class TD3(
         )
 
         if self.normalize_observations:
-            ts = ts.replace(obs_rms_state=self.update_rms(ts.obs_rms_state, next_obs))
+            ts = ts.replace(
+                obs_rms_state=self.update_obs_rms(ts.obs_rms_state, next_obs)
+            )
         if self.normalize_rewards:
-            ts = ts.replace(rew_rms_state=self.update_rms(ts.rew_rms_state, rewards))
+            ts = ts.replace(
+                rew_rms_state=self.update_rew_rms(ts.rew_rms_state, rewards, dones)
+            )
 
         # Return minibatch and updated train state
         minibatch = Minibatch(

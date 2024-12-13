@@ -170,8 +170,7 @@ class TargetNetworkMixin(struct.PyTreeNode):
         )
 
 
-@struct.dataclass
-class RMSState:
+class RMSState(struct.PyTreeNode):
     mean: chex.Array
     var: chex.Array
     count: chex.Numeric
@@ -207,34 +206,26 @@ class FloatObsWrapper:
         return obs, state
 
 
-class NormalizationMixinBase(struct.PyTreeNode):
-    def update_rms(self, rms_state, x, batched=True):
-        batch = x if batched else jnp.expand_dims(x, 0)
+def update_rms(rms_state, x, batched=True):
+    batch = x if batched else jnp.expand_dims(x, 0)
 
-        batch_count = batch.shape[0]
-        batch_mean, batch_var = batch.mean(axis=0), batch.var(axis=0)
+    batch_count = batch.shape[0]
+    batch_mean, batch_var = batch.mean(axis=0), batch.var(axis=0)
 
-        delta = batch_mean - rms_state.mean
-        tot_count = rms_state.count + batch_count
+    delta = batch_mean - rms_state.mean
+    tot_count = rms_state.count + batch_count
 
-        new_mean = rms_state.mean + delta * batch_count / tot_count
-        m_a = rms_state.var * rms_state.count
-        m_b = batch_var * batch_count
-        M2 = m_a + m_b + delta**2 * rms_state.count * batch_count / tot_count
-        new_var = M2 / tot_count
-        new_count = tot_count
+    new_mean = rms_state.mean + delta * batch_count / tot_count
+    m_a = rms_state.var * rms_state.count
+    m_b = batch_var * batch_count
+    M2 = m_a + m_b + delta**2 * rms_state.count * batch_count / tot_count
+    new_var = M2 / tot_count
+    new_count = tot_count
 
-        return RMSState(mean=new_mean, var=new_var, count=new_count)
-
-    def normalize(self, rms_state, x):
-        return (x - rms_state.mean) / jnp.sqrt(rms_state.var + 1e-8)
-
-    def update_and_normalize(self, rms_state, x, batched=True):
-        rms_state = self.update_rms(rms_state, x, batched)
-        return rms_state, self.normalize(rms_state, x)
+    return rms_state.replace(mean=new_mean, var=new_var, count=new_count)
 
 
-class NormalizeObservationsMixin(NormalizationMixinBase):
+class NormalizeObservationsMixin(struct.PyTreeNode):
     normalize_observations: bool = struct.field(pytree_node=False, default=False)
 
     @classmethod
@@ -249,10 +240,45 @@ class NormalizeObservationsMixin(NormalizationMixinBase):
         obs_shape = self.env.observation_space(self.env_params).shape
         return {"obs_rms_state": RMSState.create(obs_shape)}
 
+    def normalize_obs(self, rms_state, x):
+        return (x - rms_state.mean) / jnp.sqrt(rms_state.var + 1e-8)
 
-class NormalizeRewardsMixin(NormalizationMixinBase):
+    def update_obs_rms(self, rms_state, obs, batched=True):
+        return update_rms(rms_state, obs, batched=batched)
+
+    def update_and_normalize_obs(self, rms_state, x, batched=True):
+        rms_state = update_rms(rms_state, x, batched)
+        return rms_state, self.normalize_obs(rms_state, x)  # TODO: squeeze if ~batched?
+
+
+class RewardRMSState(RMSState):
+    returns: chex.Array
+
+    @classmethod
+    def create(cls, batch_size):
+        return cls(mean=0, var=1, count=1e-4, returns=jnp.zeros(batch_size))
+
+
+class NormalizeRewardsMixin(struct.PyTreeNode):
     normalize_rewards: bool = struct.field(pytree_node=False, default=False)
+    reward_normalization_discount: chex.Scalar = struct.field(
+        pytree_node=False, default=0.99
+    )
 
     @register_init
     def initialize_reward_rms_state(self, rng):
-        return {"rew_rms_state": RMSState.create(())}
+        batch_size = getattr(self, "num_envs", ())
+        return {"rew_rms_state": RewardRMSState.create(batch_size)}
+
+    def normalize_rew(self, rms_state, r):
+        return r / jnp.sqrt(rms_state.var + 1e-8)
+
+    def update_rew_rms(self, rms_state, rewards, dones, batched=True):
+        discount = self.reward_normalization_discount
+        returns = rewards + (1 - dones) * discount * rms_state.returns
+        rms_state = rms_state.replace(returns=returns)
+        return update_rms(rms_state, returns, batched=batched)
+
+    def update_and_normalize_rew(self, rms_state, r, done, batched=True):
+        rms_state = self.update_rew_rms(rms_state, r, done, batched=batched)
+        return rms_state, self.normalize_rew(rms_state, r)
