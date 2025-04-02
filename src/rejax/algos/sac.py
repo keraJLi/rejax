@@ -224,7 +224,7 @@ class SAC(
         )
         return ts, minibatch
 
-    def udpate_actor(self, ts, mb):
+    def update_actor(self, ts, mb):
         rng, action_rng = jax.random.split(ts.rng)
         ts = ts.replace(rng=rng)
         alpha = jnp.exp(ts.alpha_ts.params["log_alpha"])
@@ -300,7 +300,7 @@ class SAC(
         return ts
 
     def update(self, ts, mb):
-        ts, logprob = self.udpate_actor(ts, mb)
+        ts, logprob = self.update_actor(ts, mb)
         ts = self.update_critic(ts, mb)
         ts = self.update_alpha(ts, logprob)
         return ts

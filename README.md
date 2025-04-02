@@ -72,12 +72,12 @@ Benchmark on an A100 80G and a Intel Xeon 4215R CPU. Note that the hyperparamete
 ## 🤖 Implemented algorithms
 | Algorithm | Link | Discrete | Continuous | Notes                                                                          |
 | --------- | ---- | -------- | ---------- | ------------------------------------------------------------------------------ |
-| PPO       | [here](https://github.com/keraJLi/rejax/tree/main/rejax/algos/ppo.py) | ✔        | ✔          |                                                                                |
-| SAC       | [here](https://github.com/keraJLi/rejax/tree/main/rejax/algos/sac.py) | ✔        | ✔          | discrete version as in [Christodoulou, 2019](https://arxiv.org/abs/1910.07207) |
-| DQN       | [here](https://github.com/keraJLi/rejax/tree/main/rejax/algos/dqn.py) | ✔        |            | incl. DDQN, Dueling DQN                                                        |
-| PQN       | [here](https://github.com/keraJLi/rejax/tree/main/rejax/algos/pqn.py) | ✔        |            |                                                                                |
-| IQN       | [here](https://github.com/keraJLi/rejax/tree/main/rejax/algos/iqn.py) | ✔        |            |                                                                                |
-| TD3       | [here](https://github.com/keraJLi/rejax/tree/main/rejax/algos/td3.py) |          | ✔          |                                                                                |
+| PPO       | [here](https://github.com/keraJLi/rejax/blob/main/src/rejax/algos/ppo.py) | ✔        | ✔          |                                                                                |
+| SAC       | [here](https://github.com/keraJLi/rejax/blob/main/src/rejax/algos/sac.py) | ✔        | ✔          | discrete version as in [Christodoulou, 2019](https://arxiv.org/abs/1910.07207) |
+| DQN       | [here](https://github.com/keraJLi/rejax/blob/main/src/rejax/algos/dqn.py) | ✔        |            | incl. DDQN, Dueling DQN                                                        |
+| PQN       | [here](https://github.com/keraJLi/rejax/blob/main/src/rejax/algos/pqn.py) | ✔        |            |                                                                                |
+| IQN       | [here](https://github.com/keraJLi/rejax/blob/main/src/rejax/algos/iqn.py) | ✔        |            |                                                                                |
+| TD3       | [here](https://github.com/keraJLi/rejax/blob/main/src/rejax/algos/td3.py) |          | ✔          |                                                                                |
 
 
 ## 🛠 Easily extend and modify algorithms

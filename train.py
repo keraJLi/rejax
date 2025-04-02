@@ -66,7 +66,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/cartpole.yaml",
+        default="configs/gymnax/cartpole.yaml",
         help="Path to configuration file.",
     )
     parser.add_argument(
