@@ -137,7 +137,7 @@ class TD3(
         )
 
         if not self.skip_initial_evaluation:
-            evaluation = jax.tree_map(
+            evaluation = jax.tree.map(
                 lambda i, ev: jnp.concatenate((jnp.expand_dims(i, 0), ev)),
                 initial_evaluation,
                 evaluation,
@@ -147,7 +147,7 @@ class TD3(
 
     def train_iteration(self, ts):
         old_global_step = ts.global_step
-        placeholder_minibatch = jax.tree_map(
+        placeholder_minibatch = jax.tree.map(
             lambda sdstr: jnp.empty((self.num_epochs, *sdstr.shape), sdstr.dtype),
             ts.replay_buffer.sample(self.batch_size, jax.random.PRNGKey(0)),
         )
@@ -190,7 +190,7 @@ class TD3(
         def do_updates(ts):
             return jax.lax.scan(update_iteration, ts, None, self.num_epochs)
 
-        placeholder_minibatch = jax.tree_map(
+        placeholder_minibatch = jax.tree.map(
             lambda sdstr: jnp.empty((self.num_epochs, *sdstr.shape), sdstr.dtype),
             ts.replay_buffer.sample(self.batch_size, jax.random.PRNGKey(0)),
         )
@@ -223,12 +223,12 @@ class TD3(
                 ts.global_step % self.target_update_freq
                 <= old_global_step % self.target_update_freq
             )
-            critic_tp = jax.tree_map(
+            critic_tp = jax.tree.map(
                 lambda q, qt: jax.lax.select(update_target_params, q, qt),
                 self.polyak_update(ts.critic_ts.params, ts.critic_target_params),
                 ts.critic_target_params,
             )
-            actor_tp = jax.tree_map(
+            actor_tp = jax.tree.map(
                 lambda pi, pit: jax.lax.select(update_target_params, pi, pit),
                 self.polyak_update(ts.actor_ts.params, ts.actor_target_params),
                 ts.actor_target_params,

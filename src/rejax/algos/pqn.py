@@ -156,7 +156,7 @@ class PQN(
         _, targets = jax.lax.scan(
             get_target,
             (lambda_returns, max_last_q),
-            jax.tree_util.tree_map(lambda x: x[:-1], trajectories),
+            jax.tree.map(lambda x: x[:-1], trajectories),
             reverse=True,
         )
         targets = jnp.concatenate((targets, lambda_returns[None]))

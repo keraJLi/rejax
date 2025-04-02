@@ -169,7 +169,7 @@ class SAC(
                 ts.global_step % self.target_update_freq
                 <= old_global_step % self.target_update_freq
             )
-            target_params = jax.tree_map(
+            target_params = jax.tree.map(
                 lambda q, qt: jax.lax.select(update_target_params, q, qt),
                 self.polyak_update(ts.critic_ts.params, ts.critic_target_params),
                 ts.critic_target_params,
