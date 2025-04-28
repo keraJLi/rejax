@@ -132,6 +132,10 @@ class SquashedGaussianPolicy(nn.Module):
         return (self.action_range[1] - self.action_range[0]) / 2
 
     def _action_dist(self, obs):
+        # We have to transform the action manually, since we need to calculate log_probs
+        # *before* the tanh transform. Doing it afterwards runs into numerical issues
+        # because we cannot invert the tanh for +-1, which can easily be sampled.
+        # (e.g. jnp.tanh(8) = 1)
         features = self.features(obs)
         action_mean = self.action_mean(features)
         action_log_std = self.action_log_std(features)
@@ -155,7 +159,10 @@ class SquashedGaussianPolicy(nn.Module):
     def action_log_prob(self, obs, rng):
         return self(obs, rng)
 
-    def log_prob(self, obs, action):
+    def log_prob(self, obs, action, epsilon=1e-6):
+        low, high = self.action_range
+        action = jnp.clip(action, low + epsilon, high - epsilon)
+
         action_dist = self._action_dist(obs)
         action = (action - self.action_loc) / self.action_scale
         action, log_det_j = self.bij.inverse_and_log_det(action)
