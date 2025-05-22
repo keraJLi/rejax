@@ -47,3 +47,4 @@ class TestConfigs(unittest.TestCase):
                             f"Failed to create {algo} with config '{config_path}': "
                             f"{type(e).__name__}: {str(e)}"
                         )
+                        
