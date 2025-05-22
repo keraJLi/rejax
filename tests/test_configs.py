@@ -1,6 +1,6 @@
 import os
 import unittest
-
+from copy import deepcopy
 from yaml import safe_load
 
 from rejax import get_algo
@@ -39,9 +39,10 @@ class TestConfigs(unittest.TestCase):
                     continue
                 with self.subTest(config_opath=config_path, algo=algo):
                     try:
+                        original_config = deepcopy(config)
                         algo_cls = get_algo(algo)
                         algo_cls.create(**config)
-                        algo_cls.create(**config)
+                        self.assertEqual(config, original_config)
                     except Exception as e:
                         self.fail(
                             f"Failed to create {algo} with config '{config_path}': "
