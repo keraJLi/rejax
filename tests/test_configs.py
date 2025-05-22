@@ -32,7 +32,7 @@ class TestConfigs(unittest.TestCase):
                             f"{type(e).__name__}: {str(e)}"
                         )
 
-    def test_create_algo_with_same_config(self) -> None:
+    def test_create_does_not_modify_config(self) -> None:
         for config_path, configs_env in self.configs.items():
             for algo, config in configs_env.items():
                 if config.get("env", "").startswith("navix"):
