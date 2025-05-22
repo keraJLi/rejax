@@ -45,7 +45,6 @@ class TestConfigs(unittest.TestCase):
                         self.assertEqual(config, original_config)
                     except Exception as e:
                         self.fail(
-                            f"Failed to create {algo} with config '{config_path}': "
+                            f"Config '{config_path}' for {algo} has been modified: "
                             f"{type(e).__name__}: {str(e)}"
                         )
-                        
