@@ -35,6 +35,7 @@ class Algorithm(struct.PyTreeNode):
 
     @classmethod
     def create(cls, **config):
+        config = deepcopy(config)
         env, env_params = cls.create_env(config)
         agent = cls.create_agent(config, env, env_params)
 
