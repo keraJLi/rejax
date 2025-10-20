@@ -1,6 +1,6 @@
 import importlib
 
-from gymnax import make
+from gymnax import make as _gymnax_make
 
 _create_fns = {
     "brax": ("rejax.compat.brax2gymnax", "create_brax"),
@@ -12,7 +12,7 @@ _create_fns = {
 
 def create(env, **kwargs):
     if len(split := env.split("/", 1)) == 1:
-        return make(env, **kwargs)
+        return _gymnax_make(env, **kwargs)
 
     prefix, env_name = split
     module, create_fn = _create_fns[prefix]
