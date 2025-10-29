@@ -32,16 +32,16 @@ def num_entries(space):
 
 
 def convert_spec(spec):
-    if isinstance(spec, Array):
-        return spaces.Box(
-            low=-jnp.inf, high=jnp.inf, shape=spec.shape, dtype=spec.dtype
-        )
+    if isinstance(spec, DiscreteArray):
+        return spaces.Discrete(num_categories=int(spec.num_values))
     elif isinstance(spec, BoundedArray):
         return spaces.Box(
             low=spec.minimum, high=spec.maximum, shape=spec.shape, dtype=spec.dtype
         )
-    elif isinstance(spec, DiscreteArray):
-        return spaces.Discrete(num_categories=spec.num_values)
+    elif isinstance(spec, Array):
+        return spaces.Box(
+            low=-jnp.inf, high=jnp.inf, shape=spec.shape, dtype=spec.dtype
+        )
     return spaces.Dict({k: convert_spec(v) for k, v in spec._specs.items()})
 
 
@@ -70,6 +70,9 @@ def observation_to_dict(obs):
 
 class Jumanji2GymnaxEnv(GymnaxEnv):
     def __init__(self, env: JumanjiEnv):
+        if not isinstance(env.action_spec, DiscreteArray):
+            raise NotImplementedError("rejax.compat jumanji only supports discrete acts.")
+
         self.env = env
         self.max_steps_in_episode = getattr(env, "time_limit", 1000)
 
