@@ -1,17 +1,18 @@
-from copy import copy
 import dataclasses
-from functools import partial
 import warnings
+from copy import copy
+from functools import partial
 
 import chex
 import jax
 import jumanji
+import numpy as np
 from gymnax.environments import spaces
 from gymnax.environments.environment import Environment as GymnaxEnv
 from gymnax.environments.environment import EnvParams
 from jax import numpy as jnp
 from jumanji.env import Environment as JumanjiEnv
-from jumanji.specs import Array, BoundedArray, DiscreteArray
+from jumanji.specs import Array, BoundedArray, DiscreteArray, Spec
 from jumanji.types import StepType
 
 
@@ -23,17 +24,17 @@ def create_jumanji(env_name, flatten_obs=True, **kwargs):
     return env, env.default_params
 
 
-def num_entries(space):
+def num_entries(space: spaces.Space) -> int:
     if isinstance(space, spaces.Discrete):
         return space.num_categories
     elif isinstance(space, spaces.Box):
-        return jnp.prod(jnp.array(space.shape))
+        return np.prod(np.array(space.shape)).astype(int)
     elif isinstance(space, spaces.Dict):
         return sum(num_entries(subspace) for subspace in space.spaces.values())
     raise ValueError(f"Unsupported space {space}")
 
 
-def convert_spec(spec):
+def convert_spec(spec: Spec) -> spaces.Space:
     if isinstance(spec, DiscreteArray):
         return spaces.Discrete(num_categories=int(spec.num_values))
     elif isinstance(spec, BoundedArray):
@@ -73,7 +74,8 @@ def observation_to_dict(obs):
 class Jumanji2GymnaxEnv(GymnaxEnv):
     def __init__(self, env: JumanjiEnv):
         if not isinstance(env.action_spec, DiscreteArray):
-            raise NotImplementedError("rejax.compat jumanji only supports discrete acts.")
+            msg = "rejax.compat.jumanji2gymnax only supports discrete action spaces."
+            raise NotImplementedError(msg)
 
         self.env = env
         self.max_steps_in_episode = getattr(env, "time_limit", 1000)
@@ -141,7 +143,6 @@ class Jumanji2GymnaxEnv(GymnaxEnv):
     @property
     def num_entries(self) -> int:
         return num_entries(self.action_space(None))
-
 
     def __deepcopy__(self, memo):
         warnings.warn(
