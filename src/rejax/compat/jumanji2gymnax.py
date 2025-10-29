@@ -1,5 +1,7 @@
+from copy import copy
 import dataclasses
 from functools import partial
+import warnings
 
 import chex
 import jax
@@ -139,6 +141,14 @@ class Jumanji2GymnaxEnv(GymnaxEnv):
     @property
     def num_entries(self) -> int:
         return num_entries(self.action_space(None))
+
+
+    def __deepcopy__(self, memo):
+        warnings.warn(
+            f"Trying to deepcopy {type(self).__name__}, which contains a jumanji env. "
+            "Jumji envs throw an error when deepcopying, so a shallow copy is returned."
+        )
+        return copy(self)
 
 
 class FlattenObsWrapper(GymnaxEnv):
