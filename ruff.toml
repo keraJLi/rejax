@@ -1,0 +1,53 @@
+# Ruff configuration for rejax
+# https://docs.astral.sh/ruff/configuration/
+
+target-version = "py310"
+line-length = 88
+
+# Include source files and tests
+include = ["src/**/*.py", "tests/**/*.py", "examples/**/*.py"]
+
+[lint]
+# Enable recommended rules plus additional useful ones
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "NPY",    # NumPy-specific rules
+    "RUF",    # Ruff-specific rules
+]
+
+# Ignore rules that conflict with JAX/scientific computing conventions
+ignore = [
+    #  "E501",   # Line too long (handled by formatter)
+    "E741",   # Ambiguous variable name (common in math: l, I, O)
+    "B008",   # Do not perform function call in argument defaults (common in JAX)
+    "B023",   # function uses loop variables (common in JAX)
+    "B905",   # zip without explicit strict parameter
+    "UP007",  # Use X | Y for type annotations (not compatible with older Python)
+]
+
+fixable = ["ALL"]
+unfixable = []
+
+[lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+"tests/**/*.py" = ["N802", "N803", "N806"]  # Allow non-lowercase names in tests
+
+[lint.isort]
+known-first-party = ["rejax"]
+force-single-line = false
+lines-after-imports = 2
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+docstring-code-format = true
+
