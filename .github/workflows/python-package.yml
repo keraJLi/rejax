@@ -1,4 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# This workflow will install Python dependencies, run tests and lint with Ruff
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: Python package
@@ -27,14 +27,12 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install flake8
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         python -m pip install .
-    - name: Lint with flake8
+        python -m pip install ruff
+    - name: Lint with Ruff
       run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. Black has 88 max-line-length
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+        ruff check . --output-format=github
+        ruff format --check .
     # - name: Test with unittest
     #   run: python -m unittest

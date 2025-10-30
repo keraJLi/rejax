@@ -3,7 +3,7 @@ name = "rejax"
 version = "0.1.2"
 description = "Vectorizable RL algorithms in pure JAX"
 authors = [
-    {name = "Jarek Liesen", email = ""},
+    {name = "Jarek Liesen", email = "jarek.liesen@reuben.ox.ac.uk"},
 ]
 dependencies = [
     "pyyaml>=6.0.2",
