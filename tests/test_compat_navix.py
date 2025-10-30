@@ -63,7 +63,7 @@ class TestNavixCompat(unittest.TestCase):
                 # Test stepping
                 for step in range(5):
                     try:
-                        obs, state, reward, done, info = jitted_step(
+                        obs, state, reward, done, _info = jitted_step(
                             rng, state, action, params
                         )
 
@@ -100,7 +100,7 @@ class TestNavixCompat(unittest.TestCase):
 
                 # Test that stepping also returns float observations
                 action = env.action_space(params).sample(rng)
-                obs, state, reward, done, info = env.step(rng, state, action, params)
+                obs, state, _reward, _done, _info = env.step(rng, state, action, params)
                 self.assertTrue(jnp.issubdtype(obs.dtype, jnp.floating))
 
     def test_navix_env_params(self):

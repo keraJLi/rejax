@@ -41,7 +41,7 @@ class TestJumanjiCompat(unittest.TestCase):
 
                 for _ in range(3):
                     try:
-                        obs, state, reward, done, info = jitted_step(
+                        obs, state, _reward, _done, _info = jitted_step(
                             rng, state, a, params
                         )
                     except Exception as e:

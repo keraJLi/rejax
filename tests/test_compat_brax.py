@@ -43,7 +43,8 @@ class TestBraxCompat(unittest.TestCase):
                     self.assertEqual(obs.shape, obs_space.shape)
                 except Exception as e:
                     self.fail(
-                        f"Failed to get obs space for {env_name}: {type(e).__name__}: {e}"
+                        f"Failed to get obs space for {env_name}: "
+                        f"{type(e).__name__}: {e}"
                     )
 
                 # Test action space and sampling
@@ -54,13 +55,14 @@ class TestBraxCompat(unittest.TestCase):
                     self.assertEqual(action.shape, action_space.shape)
                 except Exception as e:
                     self.fail(
-                        f"Failed to sample action for {env_name}: {type(e).__name__}: {e}"
+                        f"Failed to sample action for {env_name}: "
+                        f"{type(e).__name__}: {e}"
                     )
 
                 # Test stepping
                 for step in range(3):
                     try:
-                        obs, state, reward, done, info = jitted_step(
+                        obs, state, reward, done, _info = jitted_step(
                             rng, state, action, params
                         )
 
@@ -72,7 +74,8 @@ class TestBraxCompat(unittest.TestCase):
 
                     except Exception as e:
                         self.fail(
-                            f"Failed to step {env_name} at step {step}: {type(e).__name__}: {e}"
+                            f"Failed to step {env_name} at step {step}: "
+                            f"{type(e).__name__}: {e}"
                         )
 
                     # Sample new action for next step

@@ -61,7 +61,7 @@ class TestGymnasiumCompat(unittest.TestCase):
                 # Test stepping
                 for step in range(10):
                     try:
-                        obs, state, reward, done, info = jitted_step(
+                        obs, state, reward, done, _info = jitted_step(
                             rng, state, action, params
                         )
 
@@ -108,7 +108,7 @@ class TestGymnasiumCompat(unittest.TestCase):
                 # Test action sampling and stepping
                 obs, state = env.reset(rng, params)
                 action = action_space.sample(rng)
-                obs, state, reward, done, info = env.step(rng, state, action, params)
+                obs, state, reward, done, _info = env.step(rng, state, action, params)
 
                 self.assertIsNotNone(obs)
                 self.assertIsNotNone(reward)
@@ -136,7 +136,7 @@ class TestGymnasiumCompat(unittest.TestCase):
                 # Test action sampling and stepping
                 obs, state = env.reset(rng, params)
                 action = action_space.sample(rng)
-                obs, state, reward, done, info = env.step(rng, state, action, params)
+                obs, state, reward, done, _info = env.step(rng, state, action, params)
 
                 self.assertIsNotNone(obs)
                 self.assertIsNotNone(reward)

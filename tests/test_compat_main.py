@@ -29,7 +29,9 @@ class TestCompatMain(unittest.TestCase):
                 # Test basic functionality
                 obs, state = jitted_reset(rng, params)
                 action = env.action_space(params).sample(rng)
-                obs, state, reward, done, info = jitted_step(rng, state, action, params)
+                obs, state, reward, done, _info = jitted_step(
+                    rng, state, action, params
+                )
 
                 self.assertIsNotNone(obs)
                 self.assertIsNotNone(reward)
@@ -57,7 +59,9 @@ class TestCompatMain(unittest.TestCase):
                 # Test basic functionality
                 obs, state = jitted_reset(rng, params)
                 action = env.action_space(params).sample(rng)
-                obs, state, reward, done, info = jitted_step(rng, state, action, params)
+                obs, state, reward, done, _info = jitted_step(
+                    rng, state, action, params
+                )
 
                 self.assertIsNotNone(obs)
                 self.assertIsNotNone(reward)
@@ -85,7 +89,9 @@ class TestCompatMain(unittest.TestCase):
                 # Test basic functionality
                 obs, state = jitted_reset(rng, params)
                 action = env.action_space(params).sample(rng)
-                obs, state, reward, done, info = jitted_step(rng, state, action, params)
+                obs, state, reward, done, _info = jitted_step(
+                    rng, state, action, params
+                )
 
                 self.assertIsNotNone(obs)
                 self.assertIsNotNone(reward)
@@ -113,7 +119,9 @@ class TestCompatMain(unittest.TestCase):
                 # Test basic functionality
                 obs, state = jitted_reset(rng, params)
                 action = env.action_space(params).sample(rng)
-                obs, state, reward, done, info = jitted_step(rng, state, action, params)
+                obs, state, reward, done, _info = jitted_step(
+                    rng, state, action, params
+                )
 
                 self.assertIsNotNone(obs)
                 self.assertIsNotNone(reward)
@@ -141,7 +149,9 @@ class TestCompatMain(unittest.TestCase):
                 # Test basic functionality
                 obs, state = jitted_reset(rng, params)
                 action = env.action_space(params).sample(rng)
-                obs, state, reward, done, info = jitted_step(rng, state, action, params)
+                obs, state, reward, done, _info = jitted_step(
+                    rng, state, action, params
+                )
 
                 self.assertIsNotNone(obs)
                 self.assertIsNotNone(reward)
@@ -172,7 +182,9 @@ class TestCompatMain(unittest.TestCase):
                 # Test basic functionality
                 obs, state = jitted_reset(rng, params)
                 action = env.action_space(params).sample(rng)
-                obs, state, reward, done, info = jitted_step(rng, state, action, params)
+                obs, state, reward, done, _info = jitted_step(
+                    rng, state, action, params
+                )
 
                 self.assertIsNotNone(obs)
                 self.assertIsNotNone(reward)
@@ -203,7 +215,9 @@ class TestCompatMain(unittest.TestCase):
                 # Test basic functionality
                 obs, state = jitted_reset(rng, params)
                 action = env.action_space(params).sample(rng)
-                obs, state, reward, done, info = jitted_step(rng, state, action, params)
+                obs, state, reward, done, _info = jitted_step(
+                    rng, state, action, params
+                )
 
                 self.assertIsNotNone(obs)
                 self.assertIsNotNone(reward)

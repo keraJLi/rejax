@@ -63,7 +63,7 @@ class TestKinetixCompat(unittest.TestCase):
                 # Test stepping
                 for step in range(5):
                     try:
-                        obs, state, reward, done, info = jitted_step(
+                        obs, state, reward, done, _info = jitted_step(
                             rng, state, action, params
                         )
 
@@ -107,7 +107,7 @@ class TestKinetixCompat(unittest.TestCase):
 
         # Test that we can step with continuous actions
         obs, state = env.reset(rng, params)
-        obs, state, reward, done, info = env.step(rng, state, action, params)
+        obs, state, _reward, _done, _info = env.step(rng, state, action, params)
         self.assertIsNotNone(obs)
 
     def test_kinetix_symbolic_flat_observations(self):
@@ -119,7 +119,7 @@ class TestKinetixCompat(unittest.TestCase):
         except Exception:
             self.skipTest("No test level available for Kinetix")
 
-        obs, state = env.reset(rng, params)
+        obs, _state = env.reset(rng, params)
 
         # Test that observations are flat (1D)
         self.assertEqual(len(obs.shape), 1)
