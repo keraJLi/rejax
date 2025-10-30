@@ -1,3 +1,4 @@
+import typing
 import unittest
 
 import jax
@@ -14,7 +15,7 @@ from .environments import (
 
 
 class TestEnvironmentsPQN(unittest.TestCase):
-    args = {
+    args: typing.ClassVar[dict] = {
         "num_envs": 64,
         "num_steps": 16,
         "num_epochs": 10,

@@ -1,3 +1,4 @@
+import typing
 import unittest
 from functools import partial
 
@@ -20,7 +21,7 @@ from .environments import (
 
 
 class TestEnvironmentsSAC(unittest.TestCase):
-    args = {
+    args: typing.ClassVar[dict] = {
         "num_envs": 1,
         "learning_rate": 0.0003,
         "total_timesteps": 16384,
@@ -162,7 +163,6 @@ class TestEnvironmentsSAC(unittest.TestCase):
     def test_env5(self):
         for discrete, env in enumerate([TestEnv5Continuous(), TestEnv5Discrete()]):
             with self.subTest(discrete=bool(discrete)):
-
                 sac = SAC.create(env=env, **self.args)
                 ts, _ = self.train_fn(sac)
 

@@ -1,6 +1,7 @@
 import os
 import unittest
 from copy import deepcopy
+
 from yaml import safe_load
 
 from rejax import get_algo
@@ -29,7 +30,7 @@ class TestConfigs(unittest.TestCase):
                     except Exception as e:
                         self.fail(
                             f"Failed to create {algo} with config '{config_path}': "
-                            f"{type(e).__name__}: {str(e)}"
+                            f"{type(e).__name__}: {e!s}"
                         )
 
     def test_create_does_not_modify_config(self) -> None:
@@ -46,5 +47,5 @@ class TestConfigs(unittest.TestCase):
                     except Exception as e:
                         self.fail(
                             f"Config '{config_path}' for {algo} has been modified: "
-                            f"{type(e).__name__}: {str(e)}"
+                            f"{type(e).__name__}: {e!s}"
                         )

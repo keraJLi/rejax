@@ -21,6 +21,7 @@ from evosax import SNES
 
 from rejax import get_algo
 
+
 NUM_GENERATIONS = 10
 POPULATION_SIZE = 10
 EVAL_SEEDS = 5
@@ -61,7 +62,7 @@ optim_params = {
 @partial(jax.vmap, in_axes=(None, 0))
 def evaluate_fitness(meta_params, rng):
     algo = algo_cls.create(**static_params, **meta_params)
-    train_state, (lenghts, returns) = algo.train(rng)
+    train_state, (lenghts, returns) = algo.train(rng)  # noqa: RUF059
 
     # Take mean over evaluation seeds and calculate fitness as final return
     fitness = returns.mean(axis=1)[-1]

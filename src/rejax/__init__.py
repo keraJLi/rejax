@@ -1,5 +1,6 @@
 from rejax.algos import DQN, IQN, PPO, PQN, SAC, TD3, Algorithm
 
+
 _algos = {
     "dqn": DQN,
     "iqn": IQN,
@@ -16,12 +17,11 @@ def get_algo(algo: str) -> Algorithm:
 
 
 __all__ = [
-    "get_algo",
-    # Algorithms
     "DQN",
     "IQN",
     "PPO",
     "PQN",
     "SAC",
     "TD3",
+    "get_algo",
 ]

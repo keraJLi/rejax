@@ -5,6 +5,7 @@ from gymnax.environments import spaces
 from gymnax.environments.environment import Environment
 from jax import numpy as jnp
 
+
 """
 Test environments to debug RL algorithms as in
 https://andyljones.com/posts/rl-debugging.html
@@ -20,7 +21,8 @@ class TestEnvParams1(PyTreeNode):
 
 
 class TestEnv1Continuous(Environment):
-    """ One action, zero observation, one timestep long, +1 reward every timestep """
+    """One action, zero observation, one timestep long, +1 reward every timestep"""
+
     def __init__(self):
         super().__init__()
         self.obs_shape = (1,)
@@ -57,7 +59,8 @@ class TestEnv1Continuous(Environment):
 
 
 class TestEnv1Discrete(Environment):
-    """ One action, zero observation, one timestep long, +1 reward every timestep """
+    """One action, zero observation, one timestep long, +1 reward every timestep"""
+
     def __init__(self):
         super().__init__()
         self.obs_shape = (1,)
@@ -207,6 +210,7 @@ class TestEnv3Continuous(Environment):
     """
     One action, zero-then-one observation, two timesteps long, +1 reward at the end
     """
+
     def __init__(self):
         super().__init__()
         self.obs_shape = (1,)
@@ -249,6 +253,7 @@ class TestEnv3Discrete(Environment):
     """
     One action, zero-then-one observation, two timesteps long, +1 reward at the end
     """
+
     def __init__(self):
         super().__init__()
         self.obs_shape = (1,)
@@ -299,6 +304,7 @@ class TestEnv4Continuous(Environment):
     """
     Two actions, zero observation, one timestep long, action-dependent reward
     """
+
     def __init__(self):
         super().__init__()
         self.obs_shape = (1,)
@@ -339,6 +345,7 @@ class TestEnv4Discrete(Environment):
     """
     Two actions, zero observation, one timestep long, action-dependent reward
     """
+
     def __init__(self):
         super().__init__()
         self.obs_shape = (1,)
@@ -388,6 +395,7 @@ class TestEnv5Continuous(Environment):
     Two actions, random +1/-1 observation, one timestep long, action-and-obs dependent
     +1/-1 reward
     """
+
     def __init__(self):
         super().__init__()
         self.obs_shape = (1,)
@@ -398,7 +406,7 @@ class TestEnv5Continuous(Environment):
 
     def step_env(self, key, state, action, params):
         obs = self.get_obs(state)
-        reward = - jnp.abs(action - obs).squeeze()
+        reward = -jnp.abs(action - obs).squeeze()
         state = state.replace(
             obs=jax.random.uniform(key, minval=-1, maxval=1, shape=(1,))
         )
@@ -435,6 +443,7 @@ class TestEnv5Discrete(Environment):
     Two actions, random +1/-1 observation, one timestep long, action-and-obs dependent
     +1/-1 reward
     """
+
     def __init__(self):
         super().__init__()
         self.obs_shape = (1,)
@@ -446,7 +455,7 @@ class TestEnv5Discrete(Environment):
     def step_env(self, key, state, action, params):
         obs = self.get_obs(state)
         action = 2 * action - 1
-        reward = - jnp.abs(action - obs).squeeze()
+        reward = -jnp.abs(action - obs).squeeze()
         state = state.replace(obs=2 * jax.random.bernoulli(key) - 1)
         return obs, state, reward, self.is_terminal(state, params), {}
 

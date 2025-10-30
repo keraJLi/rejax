@@ -13,14 +13,15 @@ from .pqn import PQN
 from .sac import SAC
 from .td3 import TD3
 
+
 __all__ = [
-    "Algorithm",
     "DQN",
     "IQN",
     "PPO",
     "PQN",
     "SAC",
     "TD3",
+    "Algorithm",
     "EpsilonGreedyMixin",
     "NormalizeObservationsMixin",
     "ReplayBufferMixin",

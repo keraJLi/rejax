@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from functools import partial
-from typing import Any, Callable, NamedTuple, Optional, Tuple
+from typing import Any, NamedTuple
 
 import chex
 import jax
@@ -26,7 +27,7 @@ def evaluate_single(
     def step(state):
         rng, rng_act, rng_step = jax.random.split(state.rng, 3)
         action = act(state.last_obs, rng_act)
-        obs, env_state, reward, done, info = env.step(
+        obs, env_state, reward, done, _ = env.step(
             rng_step, state.env_state, action, env_params
         )
         state = EvalState(
@@ -59,8 +60,8 @@ def evaluate(
     env: environment.Environment,
     env_params: Any,
     num_seeds: int = 128,
-    max_steps_in_episode: Optional[int] = None,
-) -> Tuple[chex.Array, chex.Array]:
+    max_steps_in_episode: int | None = None,
+) -> tuple[chex.Array, chex.Array]:
     """Evaluate a policy given by `act` on `num_seeds` environments.
 
     Args:

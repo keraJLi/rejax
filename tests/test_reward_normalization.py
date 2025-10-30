@@ -5,7 +5,6 @@ import chex
 import jax
 
 from rejax.algos.mixins import NormalizeRewardsMixin, RewardRMSState
-from rejax.compat import create
 
 
 class EpisodeState(NamedTuple):

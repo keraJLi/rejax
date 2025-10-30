@@ -8,6 +8,7 @@ from jax import numpy as jnp
 
 from rejax import get_algo
 
+
 # How many random configurations should we try?
 POPULATION_SIZE = 10
 

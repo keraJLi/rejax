@@ -65,10 +65,9 @@ def observation_to_dict(obs):
     elif isinstance(obs, tuple):
         try:
             return obs._asdict()  # defined for namedtuples
-        except:
-            raise ValueError(
-                f"I don't know how to convert observations of type {type(obs)}"
-            )
+        except AttributeError:
+            msg = f"I don't know how to convert observations of type {type(obs)}"
+            raise ValueError(msg) from None
 
 
 class Jumanji2GymnaxEnv(GymnaxEnv):
@@ -85,12 +84,14 @@ class Jumanji2GymnaxEnv(GymnaxEnv):
             )
 
         # For array-based actions, ensure they are flat (scalar or 1D)
-        if isinstance(action_spec, (BoundedArray, Array)):
-            if len(action_spec.shape) > 1:
-                raise NotImplementedError(
-                    "rejax.compat.jumanji2gymnax only supports flat action arrays. "
-                    f"Got action spec with shape: {action_spec.shape}"
-                )
+        if (
+            isinstance(action_spec, (BoundedArray, Array))
+            and len(action_spec.shape) > 1
+        ):
+            raise NotImplementedError(
+                "rejax.compat.jumanji2gymnax only supports flat action arrays. "
+                f"Got action spec with shape: {action_spec.shape}"
+            )
 
     @property
     def default_params(self):
@@ -159,7 +160,9 @@ class Jumanji2GymnaxEnv(GymnaxEnv):
     def __deepcopy__(self, memo):
         warnings.warn(
             f"Trying to deepcopy {type(self).__name__}, which contains a jumanji env. "
-            "Jumji envs throw an error when deepcopying, so a shallow copy is returned."
+            "Jumanji envs throw an error when deepcopying, so shallow copy returned.",
+            category=RuntimeWarning,
+            stacklevel=2,
         )
         return copy(self)
 

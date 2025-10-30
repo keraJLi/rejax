@@ -1,5 +1,3 @@
-from typing import Type
-
 import chex
 import distrax
 import jax
@@ -21,7 +19,7 @@ from rejax.buffers import Minibatch
 from rejax.networks import ImplicitQuantileNetwork
 
 
-def EpsilonGreedyPolicy(iqn: nn.Module) -> Type[nn.Module]:
+def EpsilonGreedyPolicy(iqn: nn.Module) -> type[nn.Module]:  # noqa:  N802
     class EpsilonGreedyPolicy(iqn):
         def _action_dist(self, obs, rng, epsilon):
             q = self.q(obs, rng)

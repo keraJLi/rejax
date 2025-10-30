@@ -13,7 +13,7 @@ class TestBraxCompat(unittest.TestCase):
         # Test common Brax environments
         # fmt: off
         brax_envs = [
-            "ant", "fast", "halfcheetah", "hopper", "humanoid", "humanoidstandup", 
+            "ant", "fast", "halfcheetah", "hopper", "humanoid", "humanoidstandup",
             "inverted_pendulum", "inverted_double_pendulum", "pusher", "reacher",
             "swimmer", "walker2d"
         ]

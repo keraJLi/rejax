@@ -2,9 +2,9 @@ import unittest
 
 import jax
 from jax import numpy as jnp
-from navix.environments.registry import registry
 
 from rejax.compat.navix2gymnax import create_navix
+
 
 # Standard set of Navix environments for testing: smallest size of every one
 # fmt: off

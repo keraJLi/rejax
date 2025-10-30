@@ -1,7 +1,7 @@
 """
 This example demonstrates how to modify an existing algorithm. To this end, we change
 the update of PPO to be the one from "Discovered Policy Optimisation" by Chris Lu et al.
-(https://arxiv.org/abs/2210.05639). 
+(https://arxiv.org/abs/2210.05639).
 """
 
 import jax

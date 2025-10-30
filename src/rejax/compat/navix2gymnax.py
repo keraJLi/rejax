@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Union
 
 import chex
 import jax
@@ -15,7 +15,7 @@ def create_navix(env_name, **kwargs):
     return env, env.default_params
 
 
-def Navix2GymnaxEnv(env: nx.Environment) -> environment.Environment:
+def Navix2GymnaxEnv(env: nx.Environment) -> environment.Environment:  # noqa:  N802
     env = wrappers.ToGymnax(env)
     env = FloatObsWrapper(env)
     return env
@@ -36,16 +36,16 @@ class FloatObsWrapper(environment.Environment):
         key: chex.PRNGKey,
         state: environment.EnvState,
         action: Union[int, float],
-        params: Optional[environment.EnvParams] = None,
-    ) -> Tuple[chex.Array, environment.EnvState, float, bool, dict]:
+        params: environment.EnvParams | None = None,
+    ) -> tuple[chex.Array, environment.EnvState, float, bool, dict]:
         obs, state, reward, done, info = self.env.step(key, state, action, params)
         obs = obs.astype(float)
         return obs, state, reward, done, info
 
     @partial(jax.jit, static_argnums=(0,))
     def reset(
-        self, key: chex.PRNGKey, params: Optional[environment.EnvParams] = None
-    ) -> Tuple[chex.Array, environment.EnvState]:
+        self, key: chex.PRNGKey, params: environment.EnvParams | None = None
+    ) -> tuple[chex.Array, environment.EnvState]:
         obs, state = self.env.reset(key, params)
         obs = obs.astype(float)
         return obs, state

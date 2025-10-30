@@ -3,9 +3,10 @@ This example demonstrates how to log to wandb during training.
 """
 
 import jax
-
 import wandb
+
 from rejax import PPO
+
 
 CONFIG = {
     "env": "brax/ant",

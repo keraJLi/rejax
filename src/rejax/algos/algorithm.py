@@ -1,6 +1,7 @@
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import asdict
-from typing import Any, Callable
+from typing import Any
 
 import chex
 import gymnax
@@ -11,6 +12,7 @@ from jax import numpy as jnp
 
 from rejax.compat import create
 from rejax.evaluate import evaluate
+
 
 INIT_REGISTRATION_KEY = "_rejax_registered_init"
 
@@ -61,7 +63,7 @@ class Algorithm(struct.PyTreeNode):
                 state_values.update(func(rng_init))
 
         cls_name = f"{self.__class__.__name__}State"
-        state = {k: struct.field(pytree_node=True) for k in state_values.keys()}
+        state = {k: struct.field(pytree_node=True) for k in state_values}
         state_hints = {k: type(v) for k, v in state_values.items()}
         d = {**state, "__annotations__": state_hints}
         clz = type(cls_name, (struct.PyTreeNode,), d)

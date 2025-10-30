@@ -20,7 +20,7 @@ class TestCompatMain(unittest.TestCase):
                 try:
                     env, params = create(env_name)
                 except Exception as e:
-                    self.skipTest(f"Environment {env_name} not available: {e}")
+                    self.skipTest(f"Environment {env_name} not available: {e!s}")
 
                 # JIT the reset and step functions
                 jitted_reset = jax.jit(env.reset)
@@ -178,14 +178,36 @@ class TestCompatMain(unittest.TestCase):
                 self.assertIsNotNone(reward)
                 self.assertIsNotNone(done)
 
-        # Test basic functionality
-        obs, state = env.reset(rng, params)
-        action = env.action_space(params).sample(rng)
-        obs, state, reward, done, info = env.step(rng, state, action, params)
+    def test_create_craftax_environments(self):
+        """Test that create function works with Craftax environments."""
+        rng = jax.random.PRNGKey(0)
 
-        self.assertIsNotNone(obs)
-        self.assertIsNotNone(reward)
-        self.assertIsNotNone(done)
+        # fmt: off
+        craftax_envs = [
+            "craftax/Craftax-Symbolic-v1",
+            "craftax/Craftax-Classic-Symbolic-v1"
+        ]
+        # fmt: on
+
+        for env_name in craftax_envs:
+            with self.subTest(env=env_name):
+                try:
+                    env, params = create(env_name)
+                except Exception as e:
+                    self.skipTest(f"Environment {env_name} not available: {e}")
+
+                # JIT the reset and step functions
+                jitted_reset = jax.jit(env.reset)
+                jitted_step = jax.jit(env.step)
+
+                # Test basic functionality
+                obs, state = jitted_reset(rng, params)
+                action = env.action_space(params).sample(rng)
+                obs, state, reward, done, info = jitted_step(rng, state, action, params)
+
+                self.assertIsNotNone(obs)
+                self.assertIsNotNone(reward)
+                self.assertIsNotNone(done)
 
     def test_create_invalid_prefix(self):
         """Test that create raises appropriate error for invalid prefix."""
@@ -195,7 +217,7 @@ class TestCompatMain(unittest.TestCase):
     def test_create_invalid_environment(self):
         """Test that create handles invalid environment names gracefully."""
         # This should raise an exception from the underlying library
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             create("NonExistentEnvironment-v999")
 
 

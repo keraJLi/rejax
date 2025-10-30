@@ -65,6 +65,8 @@ class Brax2GymnaxEnv(GymnaxEnv):
     def __deepcopy__(self, memo):
         warnings.warn(
             f"Trying to deepcopy {type(self).__name__}, which contains a brax env. "
-            "Brax envs throw an error when deepcopying, so a shallow copy is returned."
+            "Brax envs throw an error when deepcopying, so a shallow copy is returned.",
+            category=RuntimeWarning,
+            stacklevel=2,
         )
         return copy(self)

@@ -1,5 +1,4 @@
-from collections.abc import Sequence
-from typing import Callable, Tuple, Type
+from collections.abc import Callable, Sequence
 
 import distrax
 import jax
@@ -57,7 +56,7 @@ class DiscretePolicy(nn.Module):
         return action, action_dist.log_prob(action)
 
 
-def EpsilonGreedyPolicy(qnet: nn.Module) -> Type[nn.Module]:
+def EpsilonGreedyPolicy(qnet: nn.Module) -> type[nn.Module]:  # noqa:  N802
     class EpsilonGreedyPolicy(qnet):
         def _action_dist(self, obs, epsilon):
             q = self(obs)
@@ -73,7 +72,7 @@ def EpsilonGreedyPolicy(qnet: nn.Module) -> Type[nn.Module]:
 
 class GaussianPolicy(nn.Module):
     action_dim: int
-    action_range: Tuple[int, int]
+    action_range: tuple[int, int]
     hidden_layer_sizes: Sequence[int]
     activation: Callable
 
@@ -112,10 +111,10 @@ class GaussianPolicy(nn.Module):
 
 class SquashedGaussianPolicy(nn.Module):
     action_dim: int
-    action_range: Tuple[float, float]
+    action_range: tuple[float, float]
     hidden_layer_sizes: Sequence[int]
     activation: Callable
-    log_std_range: Tuple[float, float]
+    log_std_range: tuple[float, float]
 
     def setup(self):
         self.features = MLP(self.hidden_layer_sizes, self.activation)
@@ -177,7 +176,7 @@ class SquashedGaussianPolicy(nn.Module):
 
 class BetaPolicy(nn.Module):
     action_dim: int
-    action_range: Tuple[float, float]
+    action_range: tuple[float, float]
     hidden_layer_sizes: Sequence[int]
     activation: Callable
 
@@ -223,8 +222,8 @@ class BetaPolicy(nn.Module):
 
 class DeterministicPolicy(nn.Module):
     action_dim: int
-    action_range: Tuple[float, float]
-    hidden_layer_sizes: Tuple[int]
+    action_range: tuple[float, float]
+    hidden_layer_sizes: tuple[int]
     activation: Callable
 
     @property

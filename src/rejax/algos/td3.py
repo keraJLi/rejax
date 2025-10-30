@@ -17,6 +17,7 @@ from rejax.algos.mixins import (
 from rejax.buffers import Minibatch
 from rejax.networks import DeterministicPolicy, QNetwork
 
+
 # Algorithm outline
 # num_eval_iterations = total_timesteps / eval_freq
 # num_train_iterations = eval_freq / (num_envs * policy_delay)

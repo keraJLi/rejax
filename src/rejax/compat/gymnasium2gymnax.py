@@ -1,6 +1,6 @@
 import warnings
 from dataclasses import asdict
-from functools import cached_property, partial
+from functools import cached_property
 
 import gymnasium as gym
 import jax
@@ -11,10 +11,10 @@ from gymnasium import spaces as gymnasium_spaces
 from gymnasium.wrappers import Autoreset
 from gymnax.environments import spaces as gymnax_spaces
 from gymnax.environments.environment import Environment as GymnaxEnv
-from gymnax.environments.environment import EnvParams as GymnaxEnvParams
 from jax import ShapeDtypeStruct
 from jax import numpy as jnp
 from jax.dtypes import canonicalize_dtype
+
 
 # Gymnasium currently has a functional API, but only few environments are supported
 # (e.g. BlackJack, but not classic control). We want to use jax.pure_callback to call
@@ -82,7 +82,7 @@ def step_gymnasium_env(env: GymnasiumEnv, state, action):
 
 def reset_gymnasium_env(env: GymnasiumEnv, seed: int):
     seed = np.array(seed).item()
-    obs, info = env.reset(seed=seed)
+    obs, _ = env.reset(seed=seed)
     state = get_state(env)
     return obs.astype(jnp.float32), state
 
@@ -131,7 +131,9 @@ class Gymnasium2GymnaxEnv(GymnaxEnv):
     def __init__(self, env: GymnasiumEnv):
         warnings.warn(
             "Wrapper for Gymnasium2GymnaxEnv is experimental, and may not correctly "
-            "handle rng keys. Please report any issues by creating an issue. "
+            "handle rng keys. Please report any issues by creating an issue. ",
+            category=RuntimeWarning,
+            stacklevel=1,
         )
         self.env = env
         self.env.reset()

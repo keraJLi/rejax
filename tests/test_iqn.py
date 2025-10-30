@@ -1,3 +1,4 @@
+import typing
 import unittest
 
 import jax
@@ -14,7 +15,7 @@ from .environments import (
 
 
 class TestEnvironmentsIQN(unittest.TestCase):
-    args = {
+    args: typing.ClassVar[dict] = {
         "learning_rate": 0.0003,
         "total_timesteps": 16384,
         "eval_freq": 16384,

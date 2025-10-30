@@ -218,8 +218,8 @@ def update_rms(rms_state, x, batched=True):
     new_mean = rms_state.mean + delta * batch_count / tot_count
     m_a = rms_state.var * rms_state.count
     m_b = batch_var * batch_count
-    M2 = m_a + m_b + delta**2 * rms_state.count * batch_count / tot_count
-    new_var = M2 / tot_count
+    m2 = m_a + m_b + delta**2 * rms_state.count * batch_count / tot_count
+    new_var = m2 / tot_count
     new_count = tot_count
 
     return rms_state.replace(mean=new_mean, var=new_var, count=new_count)
@@ -229,7 +229,7 @@ class NormalizeObservationsMixin(struct.PyTreeNode):
     normalize_observations: bool = struct.field(pytree_node=False, default=False)
 
     @classmethod
-    def create(self, **kwargs):
+    def create(cls, **kwargs):
         config = super().create(**kwargs)
         if config.normalize_observations:
             config = config.replace(env=FloatObsWrapper(config.env))

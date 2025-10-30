@@ -1,3 +1,4 @@
+import typing
 import unittest
 from functools import partial
 
@@ -15,7 +16,7 @@ from .environments import (
 
 
 class TestEnvironmentsTD3(unittest.TestCase):
-    args = {
+    args: typing.ClassVar[dict] = {
         "num_envs": 1,
         "learning_rate": 0.0003,
         "total_timesteps": 16384,
