@@ -1,6 +1,6 @@
 import warnings
 from dataclasses import asdict
-from functools import cached_property
+from functools import cached_property, partial
 
 import gymnasium as gym
 import jax
@@ -40,7 +40,7 @@ STATE_ATTRIBUTES = {
     # Classic control
     "CartPole-v1": ("state",),
     "MountainCar-v0": ("state",),
-    "Pendulum-v0": ("state",),
+    "Pendulum-v1": ("state",),
     "Acrobot-v1": ("state",),
     "MountainCarContinuous-v0": ("state",),
 }
@@ -63,7 +63,7 @@ def get_state(env):
     state[STATE_SEED_NAME] = env.np_random_seed
 
     for attr in STATE_ATTRIBUTES[env.spec.id]:
-        state[attr] = getattr(env.unwrapped, attr)
+        state[attr] = np.array(getattr(env.unwrapped, attr))
 
     return state
 
@@ -77,14 +77,14 @@ def step_gymnasium_env(env: GymnasiumEnv, state, action):
 
     done = term or trunc
     info = {}
-    return obs, state, reward, done, info
+    return obs.astype(jnp.float32), state, reward, done, info
 
 
 def reset_gymnasium_env(env: GymnasiumEnv, seed: int):
     seed = np.array(seed).item()
     obs, info = env.reset(seed=seed)
     state = get_state(env)
-    return obs, state
+    return obs.astype(jnp.float32), state
 
 
 def gymnasium_space_to_gymnax_space(gymnasium_space):
@@ -93,7 +93,7 @@ def gymnasium_space_to_gymnax_space(gymnasium_space):
             low=gymnasium_space.low,
             high=gymnasium_space.high,
             shape=gymnasium_space.shape,
-            dtype=gymnasium_space.dtype,
+            dtype=jnp.float32,
         )
     elif isinstance(gymnasium_space, gymnasium_spaces.Discrete):
         return gymnax_spaces.Discrete(gymnasium_space.n)

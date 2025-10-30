@@ -5,6 +5,7 @@ import chex
 import jax
 import navix as nx
 from gymnax.environments import environment
+from jax import numpy as jnp
 from navix.environments import wrappers
 
 
@@ -25,7 +26,7 @@ class FloatObsWrapper(environment.Environment):
         self.env = env
 
     def __getattribute__(self, name: str) -> Any:
-        if name in ["env", "reset", "step"]:
+        if name in ["env", "reset", "step", "observation_space"]:
             return super().__getattribute__(name)
         return self.env.__getattribute__(name)
 
@@ -48,3 +49,8 @@ class FloatObsWrapper(environment.Environment):
         obs, state = self.env.reset(key, params)
         obs = obs.astype(float)
         return obs, state
+
+    def observation_space(self, params):
+        space = self.env.observation_space(params)
+        space.dtype = jnp.float32
+        return space

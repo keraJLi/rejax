@@ -24,16 +24,6 @@ def create_jumanji(env_name, flatten_obs=True, **kwargs):
     return env, env.default_params
 
 
-def num_entries(space: spaces.Space) -> int:
-    if isinstance(space, spaces.Discrete):
-        return space.num_categories
-    elif isinstance(space, spaces.Box):
-        return np.prod(np.array(space.shape)).astype(int)
-    elif isinstance(space, spaces.Dict):
-        return sum(num_entries(subspace) for subspace in space.spaces.values())
-    raise ValueError(f"Unsupported space {space}")
-
-
 def convert_spec(spec: Spec) -> spaces.Space:
     if isinstance(spec, DiscreteArray):
         return spaces.Discrete(num_categories=int(spec.num_values))
@@ -46,6 +36,16 @@ def convert_spec(spec: Spec) -> spaces.Space:
             low=-jnp.inf, high=jnp.inf, shape=spec.shape, dtype=spec.dtype
         )
     return spaces.Dict({k: convert_spec(v) for k, v in spec._specs.items()})
+
+
+def num_entries(space: spaces.Space) -> int:
+    if isinstance(space, spaces.Discrete):
+        return 1
+    elif isinstance(space, spaces.Box):
+        return np.prod(np.array(space.shape)).astype(int)
+    elif isinstance(space, spaces.Dict):
+        return sum(num_entries(subspace) for subspace in space.spaces.values())
+    raise ValueError(f"Unsupported space {space}")
 
 
 def flatten_obs(obs):
@@ -73,12 +73,24 @@ def observation_to_dict(obs):
 
 class Jumanji2GymnaxEnv(GymnaxEnv):
     def __init__(self, env: JumanjiEnv):
-        if not isinstance(env.action_spec, DiscreteArray):
-            msg = "rejax.compat.jumanji2gymnax only supports discrete action spaces."
-            raise NotImplementedError(msg)
-
         self.env = env
         self.max_steps_in_episode = getattr(env, "time_limit", 1000)
+
+        # Check if action space is flat (1D array, not Dict or nested structure)
+        action_spec = env.action_spec
+        if not isinstance(action_spec, (DiscreteArray, BoundedArray, Array)):
+            raise NotImplementedError(
+                "rejax.compat.jumanji2gymnax only supports flat action spaces. "
+                f"Got action spec of type: {type(action_spec).__name__}"
+            )
+
+        # For array-based actions, ensure they are flat (scalar or 1D)
+        if isinstance(action_spec, (BoundedArray, Array)):
+            if len(action_spec.shape) > 1:
+                raise NotImplementedError(
+                    "rejax.compat.jumanji2gymnax only supports flat action arrays. "
+                    f"Got action spec with shape: {action_spec.shape}"
+                )
 
     @property
     def default_params(self):
