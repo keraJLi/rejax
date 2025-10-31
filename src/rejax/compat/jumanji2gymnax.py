@@ -12,7 +12,7 @@ from gymnax.environments.environment import Environment as GymnaxEnv
 from gymnax.environments.environment import EnvParams
 from jax import numpy as jnp
 from jumanji.env import Environment as JumanjiEnv
-from jumanji.specs import Array, BoundedArray, DiscreteArray, Spec
+from jumanji.specs import Array, BoundedArray, DiscreteArray, MultiDiscreteArray, Spec
 from jumanji.types import StepType
 
 
@@ -25,7 +25,11 @@ def create_jumanji(env_name, flatten_obs=True, **kwargs):
 
 
 def convert_spec(spec: Spec) -> spaces.Space:
-    if isinstance(spec, DiscreteArray):
+    if isinstance(spec, MultiDiscreteArray):
+        # jumaji max-vals are traced, but gymnax asserts on their value.
+        # impossible to fix...
+        raise NotImplementedError("MultiDiscreteArray is not supported (yet? PR!)")
+    elif isinstance(spec, DiscreteArray):
         return spaces.Discrete(num_categories=int(spec.num_values))
     elif isinstance(spec, BoundedArray):
         return spaces.Box(
@@ -77,17 +81,20 @@ class Jumanji2GymnaxEnv(GymnaxEnv):
 
         # Check if action space is flat (1D array, not Dict or nested structure)
         action_spec = env.action_spec
-        if not isinstance(action_spec, (DiscreteArray, BoundedArray, Array)):
+        if not isinstance(action_spec, (DiscreteArray, BoundedArray)):
+            raise NotImplementedError(
+                "rejax.compat.jumanji2gymnax only supports flat action spaces. "
+                f"Got action spec of type: {type(action_spec).__name__}"
+            )
+
+        if isinstance(action_spec, MultiDiscreteArray):
             raise NotImplementedError(
                 "rejax.compat.jumanji2gymnax only supports flat action spaces. "
                 f"Got action spec of type: {type(action_spec).__name__}"
             )
 
         # For array-based actions, ensure they are flat (scalar or 1D)
-        if (
-            isinstance(action_spec, (BoundedArray, Array))
-            and len(action_spec.shape) > 1
-        ):
+        if len(action_spec.shape) > 1:
             raise NotImplementedError(
                 "rejax.compat.jumanji2gymnax only supports flat action arrays. "
                 f"Got action spec with shape: {action_spec.shape}"

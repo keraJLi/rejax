@@ -2,6 +2,7 @@ import unittest
 
 import jax
 import jumanji
+from jumanji.specs import MultiDiscreteArray
 
 from rejax.compat.jumanji2gymnax import create_jumanji
 
@@ -17,7 +18,9 @@ class TestJumanjiCompat(unittest.TestCase):
                 continue
 
             with self.subTest(env=env):
-                if len(jumanji.make(env).action_spec.shape) > 1:
+                if len(jumanji.make(env).action_spec.shape) > 1 or isinstance(
+                    jumanji.make(env).action_spec, MultiDiscreteArray
+                ):
                     with self.assertRaises(NotImplementedError):
                         create_jumanji(env)
                     continue
@@ -60,11 +63,10 @@ class TestJumanjiCompat(unittest.TestCase):
                 continue
 
             with self.subTest(env=env_name):
-                if len(jumanji.make(env_name).action_spec.shape) > 1:
-                    # Skip environments with multi-dimensional action specs
-                    continue
-
-                _env, params = create_jumanji(env_name)
+                try:
+                    _env, params = create_jumanji(env_name)
+                except NotImplementedError:
+                    self.skipTest(f"Environment {env_name} not created.")
 
                 # Test that params have max_steps_in_episode attribute
                 self.assertTrue(hasattr(params, "max_steps_in_episode"))
