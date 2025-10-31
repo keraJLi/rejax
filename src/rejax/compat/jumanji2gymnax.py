@@ -119,6 +119,9 @@ class Jumanji2GymnaxEnv(GymnaxEnv):
         if "key" in dataclasses.fields(state):
             state = dataclasses.replace(state, key=key)
 
+        if isinstance(self.action_space(params), spaces.Discrete):
+            action = action.astype(int)
+
         state, obs = self.env.step(state, action)
         done = obs.step_type == StepType.LAST
         obs_obs = observation_to_dict(obs.observation)
