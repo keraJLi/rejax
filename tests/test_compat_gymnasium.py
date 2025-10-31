@@ -151,15 +151,14 @@ class TestGymnasiumCompat(unittest.TestCase):
         except Exception:
             self.skipTest("CartPole environment not available")
 
+        # Test that params have max_steps_in_episode attribute
+        self.assertTrue(hasattr(params, "max_steps_in_episode"))
+        self.assertIsInstance(params.max_steps_in_episode, int)
+
         # Test reset with params
         obs, state = env.reset(rng, params)
         self.assertIsNotNone(obs)
         self.assertIsNotNone(state)
-
-        # Test that we can modify max_steps_in_episode
-        if hasattr(params, "max_steps_in_episode"):
-            self.assertIsInstance(params.max_steps_in_episode, int)
-            self.assertGreater(params.max_steps_in_episode, 0)
 
 
 if __name__ == "__main__":

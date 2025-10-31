@@ -111,6 +111,10 @@ class TestNavixCompat(unittest.TestCase):
             with self.subTest(env=env_name):
                 env, params = create_navix(env_name)
 
+                # Test that params have max_steps_in_episode attribute
+                self.assertTrue(hasattr(params, "max_steps_in_episode"))
+                self.assertIsInstance(params.max_steps_in_episode, int)
+
                 # Test reset with params
                 obs, state = env.reset(rng, params)
                 self.assertIsNotNone(obs)

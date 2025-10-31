@@ -153,6 +153,53 @@ class TestKinetixCompat(unittest.TestCase):
         self.assertIsInstance(env.observation_space(params), Box)
         self.assertEqual(len(env.observation_space(params).shape), 1)
 
+    def test_kinetix_env_params(self):
+        """Test that environment parameters have max_steps_in_episode."""
+        # fmt: off
+        kinetix_levels = [
+            "s/h1_thrust_over_ball", "s/h2_one_wheel_car", "s/h8_unicycle_balance",
+            "m/h1_car_left", "m/h8_weird_vehicle", "m/h14_thrustblock",
+            "l/h5_flappy_bird", "l/hard_pinball", "l/lever_puzzle",
+        ]
+        # fmt: on
+
+        for level_name in kinetix_levels:
+            with self.subTest(level=level_name):
+                try:
+                    _env, params = create_kinetix(level_name)
+                except Exception as e:
+                    self.skipTest(f"Level {level_name} not available: {e}")
+
+                # Test that params have max_steps_in_episode attribute
+                self.assertTrue(hasattr(params, "max_steps_in_episode"))
+                self.assertIsInstance(params.max_steps_in_episode, int)
+
+                # Test that dt attribute is accessible
+                self.assertTrue(hasattr(params, "dt"))
+                original_dt = params.dt
+
+                # Test that max_steps_in_episode equals max_timesteps
+                self.assertEqual(params.max_steps_in_episode, params.max_timesteps)
+
+                # Test that replacing dt works
+                new_dt = original_dt * 2.0
+                new_params = params.replace(dt=new_dt)
+                self.assertEqual(new_params.dt, new_dt)
+
+                # Test that replacing max_steps_in_episode works and auto-syncs
+                new_max_steps = params.max_steps_in_episode + 100
+                new_params = params.replace(max_steps_in_episode=new_max_steps)
+                self.assertEqual(new_params.max_steps_in_episode, new_max_steps)
+                # Auto-sync: max_timesteps should also be updated
+                self.assertEqual(new_params.max_timesteps, new_max_steps)
+
+                # Test that replacing max_timesteps works and auto-syncs
+                new_max_timesteps = params.max_timesteps + 50
+                new_params = params.replace(max_timesteps=new_max_timesteps)
+                self.assertEqual(new_params.max_timesteps, new_max_timesteps)
+                # Auto-sync: max_steps_in_episode should also be updated
+                self.assertEqual(new_params.max_steps_in_episode, new_max_timesteps)
+
 
 if __name__ == "__main__":
     unittest.main()

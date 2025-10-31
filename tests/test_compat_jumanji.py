@@ -51,3 +51,21 @@ class TestJumanjiCompat(unittest.TestCase):
                 self.assertEqual(obs.shape, env.observation_space(params).shape)
                 self.assertEqual(a.dtype, env.action_space(params).dtype)
                 self.assertEqual(a.shape, env.action_space(params).shape)
+
+    def test_jumanji_env_params(self):
+        """Test that environment parameters have max_steps_in_episode."""
+        for env_name in jumanji.registered_environments():
+            # Skip Sokoban as it downloads from the internet
+            if env_name.startswith("Sokoban"):
+                continue
+
+            with self.subTest(env=env_name):
+                if len(jumanji.make(env_name).action_spec.shape) > 1:
+                    # Skip environments with multi-dimensional action specs
+                    continue
+
+                _env, params = create_jumanji(env_name)
+
+                # Test that params have max_steps_in_episode attribute
+                self.assertTrue(hasattr(params, "max_steps_in_episode"))
+                self.assertIsInstance(params.max_steps_in_episode, int)

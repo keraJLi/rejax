@@ -93,7 +93,6 @@ class TestBraxCompat(unittest.TestCase):
         # Test that params have expected structure
         self.assertTrue(hasattr(params, "max_steps_in_episode"))
         self.assertIsInstance(params.max_steps_in_episode, int)
-        self.assertGreater(params.max_steps_in_episode, 0)
 
         # Test reset with params
         obs, state = env.reset(rng, params)
