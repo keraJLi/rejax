@@ -39,7 +39,7 @@ compat = [
     "navix>=0.7.0",
     "jumanji>=1.0.1",
     "gymnasium>=1.0.0",
-    "kinetix-env>=1.0.0",
+    "kinetix-env>=2.0.0",
 ]
 
 [build-system]

@@ -1,5 +1,5 @@
 from kinetix.environment import make_kinetix_env
-from kinetix.environment.utils import ActionType, ObservationType
+from kinetix.environment.spaces import ActionType, ObservationType
 from kinetix.util import load_from_json_file
 
 

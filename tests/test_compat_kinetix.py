@@ -131,7 +131,7 @@ class TestKinetixCompat(unittest.TestCase):
     def test_kinetix_custom_kwargs(self):
         """Test that custom kwargs can be passed to create_kinetix."""
         from gymnax.environments.spaces import Box, Discrete
-        from kinetix.environment.utils import ActionType, ObservationType
+        from kinetix.environment.spaces import ActionType, ObservationType
 
         try:
             # Test with discrete actions

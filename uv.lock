@@ -2527,7 +2527,7 @@ requires-dist = [
     { name = "gymnax", git = "https://github.com/RobertTLange/gymnax?rev=main" },
     { name = "jax", specifier = ">=0.4.34" },
     { name = "jumanji", marker = "extra == 'compat'", specifier = ">=1.0.1" },
-    { name = "kinetix-env", marker = "extra == 'compat'", specifier = ">=1.0.0" },
+    { name = "kinetix-env", marker = "extra == 'compat'", specifier = ">=2.0.0" },
     { name = "navix", marker = "extra == 'compat'", specifier = ">=0.7.0" },
     { name = "optax", specifier = ">=0.2.3" },
     { name = "pyyaml", specifier = ">=6.0.2" },
