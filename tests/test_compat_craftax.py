@@ -96,6 +96,26 @@ class TestCraftaxCompat(unittest.TestCase):
                 self.assertTrue(hasattr(params, "max_steps_in_episode"))
                 self.assertIsInstance(params.max_steps_in_episode, int)
 
+                # Test that max_steps_in_episode equals max_timesteps
+                self.assertEqual(params.max_steps_in_episode, params.max_timesteps)
+
+                # Test that other attributes are accessible
+                self.assertTrue(hasattr(params, "day_length"))
+
+                # Test that replacing max_steps_in_episode works and auto-syncs
+                new_max_steps = params.max_steps_in_episode + 1000
+                new_params = params.replace(max_steps_in_episode=new_max_steps)
+                self.assertEqual(new_params.max_steps_in_episode, new_max_steps)
+                # Auto-sync: max_timesteps should also be updated
+                self.assertEqual(new_params.max_timesteps, new_max_steps)
+
+                # Test that replacing max_timesteps works and auto-syncs
+                new_max_timesteps = params.max_timesteps + 500
+                new_params = params.replace(max_timesteps=new_max_timesteps)
+                self.assertEqual(new_params.max_timesteps, new_max_timesteps)
+                # Auto-sync: max_steps_in_episode should also be updated
+                self.assertEqual(new_params.max_steps_in_episode, new_max_timesteps)
+
                 # Test reset with params
                 obs, state = env.reset(rng, params)
                 self.assertIsNotNone(obs)
