@@ -160,6 +160,7 @@ class PPO(OnPolicyMixin, NormalizeObservationsMixin, NormalizeRewardsMixin, Algo
                 last_obs=next_obs,
                 last_done=done,
                 global_step=ts.global_step + self.num_envs,
+                episode_return=(ts.episode_return + reward) * (1 - done),
             )
             return ts, transition
 

@@ -184,6 +184,7 @@ class IQN(
             last_obs=next_obs,
             env_state=env_state,
             global_step=ts.global_step + self.num_envs,
+            episode_return=(ts.episode_return + rewards) * (1 - dones),
         )
         return ts, minibatch
 
