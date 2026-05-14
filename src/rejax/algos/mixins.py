@@ -169,6 +169,24 @@ class TargetNetworkMixin(struct.PyTreeNode):
             target_params,
         )
 
+    def update_target_params(self, params, target_params, step, previous_step=None):
+        new_target_params = self.polyak_update(params, target_params)
+        if self.target_update_freq == 1:
+            return new_target_params
+
+        if previous_step is None:
+            do_update = step % self.target_update_freq == 0
+        else:
+            do_update = (
+                step % self.target_update_freq
+                <= previous_step % self.target_update_freq
+            )
+        return jax.tree.map(
+            lambda new, old: jax.lax.select(do_update, new, old),
+            new_target_params,
+            target_params,
+        )
+
 
 class RMSState(struct.PyTreeNode):
     mean: chex.Array

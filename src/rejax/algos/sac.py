@@ -159,22 +159,14 @@ class SAC(
         start_training = ts.global_step > self.fill_buffer
         ts = jax.lax.cond(start_training, lambda: do_updates(ts), lambda: ts)
 
-        # Update target network
-        if self.target_update_freq == 1:
-            target_params = self.polyak_update(
-                ts.critic_ts.params, ts.critic_target_params
-            )
-        else:
-            update_target_params = (
-                ts.global_step % self.target_update_freq
-                <= old_global_step % self.target_update_freq
-            )
-            target_params = jax.tree.map(
-                lambda q, qt: jax.lax.select(update_target_params, q, qt),
-                self.polyak_update(ts.critic_ts.params, ts.critic_target_params),
+        ts = ts.replace(
+            critic_target_params=self.update_target_params(
+                ts.critic_ts.params,
                 ts.critic_target_params,
+                ts.global_step,
+                old_global_step,
             )
-        ts = ts.replace(critic_target_params=target_params)
+        )
 
         return ts
 
@@ -182,18 +174,14 @@ class SAC(
         rng, rng_action = jax.random.split(ts.rng)
         ts = ts.replace(rng=rng)
 
-        def sample_policy(rng):
-            if self.normalize_observations:
-                last_obs = self.normalize_obs(ts.obs_rms_state, ts.last_obs)
-            else:
-                last_obs = ts.last_obs
+        if self.normalize_observations:
+            last_obs = self.normalize_obs(ts.obs_rms_state, ts.last_obs)
+        else:
+            last_obs = ts.last_obs
 
-            actions = self.actor.apply(
-                ts.actor_ts.params, last_obs, rng_action, method="act"
-            )
-            return actions
-
-        actions = sample_policy(rng_action)
+        actions = self.actor.apply(
+            ts.actor_ts.params, last_obs, rng_action, method="act"
+        )
 
         rng, rng_steps = jax.random.split(ts.rng)
         ts = ts.replace(rng=rng)
