@@ -67,6 +67,7 @@ class TestMPOLossParity(unittest.TestCase):
         self.assertTrue(jnp.allclose(loss_kl, jnp.sum(alpha * mean_kl)))
         self.assertTrue(jnp.allclose(loss_alpha, jnp.sum(alpha * (epsilon - mean_kl))))
 
+
 class TestEnvironmentsMPO(unittest.TestCase):
     args: typing.ClassVar[dict] = {
         "num_envs": 1,
