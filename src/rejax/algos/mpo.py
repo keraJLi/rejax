@@ -114,7 +114,7 @@ class MPO(
     per_dim_constraining: bool = struct.field(pytree_node=False, default=True)
     # MO-MPO action penalization from the Acme loss.
     action_penalization: bool = struct.field(pytree_node=False, default=True)
-    target_network_update_freq: int = struct.field(pytree_node=False, default=100)
+    target_update_freq: int = struct.field(pytree_node=False, default=100)
     polyak: chex.Scalar = struct.field(pytree_node=True, default=0.0)
 
     # KL constraint thresholds
@@ -144,7 +144,9 @@ class MPO(
         agent_kwargs = config.pop("agent_kwargs", {})
         activation = agent_kwargs.pop("activation", "relu")
         agent_kwargs["activation"] = getattr(nn, activation)
-        layers = config.pop("hidden_layer_sizes", (64, 64))
+        layers = agent_kwargs.pop(
+            "hidden_layer_sizes", config.pop("hidden_layer_sizes", (64, 64))
+        )
         agent_kwargs["hidden_layer_sizes"] = tuple(layers)
 
         action_space = env.action_space(env_params)
