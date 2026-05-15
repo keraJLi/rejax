@@ -132,9 +132,7 @@ class ClippedGaussianPolicy(nn.Module):
         # Maps zero scale logits to init_scale.
         action_scale *= self.init_scale / jax.nn.softplus(0.0)
         action_scale += self.min_scale
-        return distrax.MultivariateNormalDiag(
-            loc=action_mean, scale_diag=action_scale
-        )
+        return distrax.MultivariateNormalDiag(loc=action_mean, scale_diag=action_scale)
 
     def __call__(self, obs, rng):
         action_dist = self._action_dist(obs)
