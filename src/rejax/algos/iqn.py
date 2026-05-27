@@ -122,7 +122,7 @@ class IQN(
         ts = jax.lax.cond(start_training, lambda: do_updates(ts), lambda: ts)
 
         ts = ts.replace(
-            q_target_params=self.update_target_params(
+            q_target_params=self.maybe_update_target_params(
                 ts.q_ts.params, ts.q_target_params, ts.global_step, old_global_step
             )
         )

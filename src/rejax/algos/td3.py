@@ -216,13 +216,13 @@ class TD3(
         ts = jax.lax.cond(start_training, do_updates, lambda ts: ts, ts)
 
         ts = ts.replace(
-            critic_target_params=self.update_target_params(
+            critic_target_params=self.maybe_update_target_params(
                 ts.critic_ts.params,
                 ts.critic_target_params,
                 ts.global_step,
                 old_global_step,
             ),
-            actor_target_params=self.update_target_params(
+            actor_target_params=self.maybe_update_target_params(
                 ts.actor_ts.params,
                 ts.actor_target_params,
                 ts.global_step,
