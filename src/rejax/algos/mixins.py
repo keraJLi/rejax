@@ -163,7 +163,7 @@ class TargetNetworkMixin(struct.PyTreeNode):
     polyak: chex.Scalar = struct.field(pytree_node=True, default=0.99)
 
     def maybe_update_target_params(self, params, target_params, step, previous_step):
-        # Returns target_params if polyak=0
+        # Returns params if polyak=0
         new_target_params = jax.tree.map(
             lambda p, tp: tp * self.polyak + p * (1 - self.polyak),
             params,
