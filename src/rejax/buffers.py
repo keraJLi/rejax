@@ -33,13 +33,21 @@ class CircularBuffer(struct.PyTreeNode):
     def extend(self, batch: chex.ArrayTree) -> "CircularBuffer":
         batch_flat, _ = jax.tree.flatten(batch)
         batch_size = batch_flat[0].shape[0]
+        write_index = self.index
+        write_size = batch_size
 
-        idx = self.index + jnp.arange(batch_size)
-        idx = idx % self.size
+        if batch_size > self.size:
+            batch = jax.tree.map(lambda b: b[-self.size :], batch)
+            write_index = (
+                self.index + batch_size - self.size
+            ) % self.size  # To preserve order in buffer.
+            write_size = self.size
+
+        idx = (write_index + jnp.arange(write_size)) % self.size
         data = jax.tree.map(lambda arr, b: arr.at[idx].set(b), self.data, batch)
 
         next_index = (self.index + batch_size) % self.size
-        full = jnp.logical_or(self.full, next_index < self.index)
+        full = jnp.logical_or(self.full, self.index + batch_size >= self.size)
         return self.replace(data=data, index=next_index, full=full)
 
 
