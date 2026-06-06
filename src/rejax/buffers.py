@@ -39,7 +39,7 @@ class CircularBuffer(struct.PyTreeNode):
         data = jax.tree.map(lambda arr, b: arr.at[idx].set(b), self.data, batch)
 
         next_index = (self.index + batch_size) % self.size
-        full = jnp.logical_or(self.full, next_index == 0)
+        full = jnp.logical_or(self.full, next_index < self.index)
         return self.replace(data=data, index=next_index, full=full)
 
 
