@@ -31,6 +31,15 @@ class CircularBuffer(struct.PyTreeNode):
 
     @jax.jit
     def extend(self, batch: chex.ArrayTree) -> "CircularBuffer":
+        """Add received batch to the buffer. When batch size is larger than the buffer,
+        only the last self.size entries from the batch are added.
+
+        Args:
+            batch (chex.ArrayTree): Batch of new data.
+
+        Returns:
+            CircularBuffer: The updated circular buffer.
+        """
         batch_flat, _ = jax.tree.flatten(batch)
         batch_size = batch_flat[0].shape[0]
         write_index = self.index
@@ -100,7 +109,7 @@ class ReplayBuffer(CircularBuffer):
 
     @partial(jax.jit, static_argnames=("num"))
     def sample(self, num: int, rng: chex.PRNGKey) -> Minibatch:
-        """Samples a minibatch of transitions from the buffer, without replacement.
+        """Samples a minibatch of transitions from the buffer, with replacement.
         Note that this function does not check if enough transitions are stored, and
         might return the same transition multiple times.
 
