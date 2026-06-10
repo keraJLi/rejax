@@ -121,20 +121,11 @@ class IQN(
 
         ts = jax.lax.cond(start_training, lambda: do_updates(ts), lambda: ts)
 
-        # Update target network
-        if self.target_update_freq == 1:
-            target_params = self.polyak_update(ts.q_ts.params, ts.q_target_params)
-        else:
-            update_target_params = (
-                ts.global_step % self.target_update_freq
-                <= old_global_step % self.target_update_freq
+        ts = ts.replace(
+            q_target_params=self.maybe_update_target_params(
+                ts.q_ts.params, ts.q_target_params, ts.global_step, old_global_step
             )
-            target_params = jax.tree.map(
-                lambda q, qt: jax.lax.select(update_target_params, q, qt),
-                self.polyak_update(ts.q_ts.params, ts.q_target_params),
-                ts.q_target_params,
-            )
-        ts = ts.replace(q_target_params=target_params)
+        )
         return ts
 
     def collect_transitions(self, ts, epsilon, uniform=False):

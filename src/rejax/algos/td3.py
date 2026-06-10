@@ -215,27 +215,20 @@ class TD3(
         start_training = ts.global_step > self.fill_buffer
         ts = jax.lax.cond(start_training, do_updates, lambda ts: ts, ts)
 
-        # Update target networks
-        if self.target_update_freq == 1:
-            critic_tp = self.polyak_update(ts.critic_ts.params, ts.critic_target_params)
-            actor_tp = self.polyak_update(ts.actor_ts.params, ts.actor_target_params)
-        else:
-            update_target_params = (
-                ts.global_step % self.target_update_freq
-                <= old_global_step % self.target_update_freq
-            )
-            critic_tp = jax.tree.map(
-                lambda q, qt: jax.lax.select(update_target_params, q, qt),
-                self.polyak_update(ts.critic_ts.params, ts.critic_target_params),
+        ts = ts.replace(
+            critic_target_params=self.maybe_update_target_params(
+                ts.critic_ts.params,
                 ts.critic_target_params,
-            )
-            actor_tp = jax.tree.map(
-                lambda pi, pit: jax.lax.select(update_target_params, pi, pit),
-                self.polyak_update(ts.actor_ts.params, ts.actor_target_params),
+                ts.global_step,
+                old_global_step,
+            ),
+            actor_target_params=self.maybe_update_target_params(
+                ts.actor_ts.params,
                 ts.actor_target_params,
-            )
-
-        ts = ts.replace(critic_target_params=critic_tp, actor_target_params=actor_tp)
+                ts.global_step,
+                old_global_step,
+            ),
+        )
         return ts
 
     def collect_transitions(self, ts, uniform=False):
