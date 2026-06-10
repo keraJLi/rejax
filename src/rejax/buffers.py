@@ -108,5 +108,6 @@ class ReplayBuffer(CircularBuffer):
         Returns:
             Minibatch: A minibatch of randomly sampled transitions.
         """
-        minibatch_index = jax.random.randint(rng, (num,), 0, self.num_entries)
+        idxs = jnp.arange(self.num_entries)
+        minibatch_index = jax.random.sample(rng, idxs, (num,), replace=False)
         return jax.tree.map(lambda arr: arr[minibatch_index], self.data)
