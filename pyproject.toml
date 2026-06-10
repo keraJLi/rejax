@@ -10,7 +10,7 @@ dependencies = [
     "flax>=0.9.0",
     "optax>=0.2.3",
     "distrax>=0.1.5",
-    "gymnax @ git+https://github.com/RobertTLange/gymnax@main",
+    "gymnax>=0.0.9",
     "jax>=0.4.34",
 ]
 requires-python = ">=3.10"
@@ -45,9 +45,6 @@ compat = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [dependency-groups]
 dev = [

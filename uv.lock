@@ -916,13 +916,17 @@ wheels = [
 [[package]]
 name = "gymnax"
 version = "0.0.9"
-source = { git = "https://github.com/RobertTLange/gymnax?rev=main#18f2e7f3cffafc7042c76fdc538c83957418a9a9" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "flax" },
     { name = "gymnasium" },
     { name = "jax" },
     { name = "matplotlib" },
     { name = "seaborn" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9c/2c/91105387a5f6f11fe4c6e773fecd6aeac5a04656f1ea03c28e5228a8a11c/gymnax-0.0.9.tar.gz", hash = "sha256:407ececbefb527b8e18d2bc4df15dd5251fd3507f3f527ad69fbfc7b2d8ae410", size = 57128, upload-time = "2025-05-23T08:53:19.987Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fd/04/1042695a9aee9d619d4802272ffeb7ab88f4c241d16c2701f666ec7e529b/gymnax-0.0.9-py3-none-any.whl", hash = "sha256:a73359cfbc2664f4963ccac06afe2b46ff7825cf48dd97200b0f4025f6f995bc", size = 86567, upload-time = "2025-05-23T08:53:18.316Z" },
 ]
 
 [[package]]
@@ -2540,7 +2544,7 @@ requires-dist = [
     { name = "distrax", specifier = ">=0.1.5" },
     { name = "flax", specifier = ">=0.9.0" },
     { name = "gymnasium", marker = "extra == 'compat'", specifier = ">=1.0.0" },
-    { name = "gymnax", git = "https://github.com/RobertTLange/gymnax?rev=main" },
+    { name = "gymnax", specifier = ">=0.0.9" },
     { name = "jax", specifier = ">=0.4.34" },
     { name = "jumanji", marker = "extra == 'compat'", specifier = ">=1.0.1" },
     { name = "kinetix-env", marker = "extra == 'compat'", specifier = ">=2.0.0" },
