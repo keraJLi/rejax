@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/jax-envelope
+      url: https://pypi.org/p/rejax
     permissions:
       id-token: write
     steps:
