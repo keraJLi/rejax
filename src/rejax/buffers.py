@@ -34,12 +34,19 @@ class CircularBuffer(struct.PyTreeNode):
         batch_flat, _ = jax.tree.flatten(batch)
         batch_size = batch_flat[0].shape[0]
 
+        if batch_size > self.size:
+            raise ValueError(
+                f"Batch size {batch_size} exceeds buffer size {self.size}."
+            )
+
         idx = self.index + jnp.arange(batch_size)
         idx = idx % self.size
         data = jax.tree.map(lambda arr, b: arr.at[idx].set(b), self.data, batch)
 
         next_index = (self.index + batch_size) % self.size
-        full = jnp.logical_or(self.full, next_index == 0)
+        # next_index == self.index means we wrapped exactly (batch_size == size)
+        wrapped = next_index <= self.index if batch_size > 0 else False
+        full = jnp.logical_or(self.full, wrapped)
         return self.replace(data=data, index=next_index, full=full)
 
 
@@ -94,7 +101,7 @@ class ReplayBuffer(CircularBuffer):
     def sample(self, num: int, rng: chex.PRNGKey) -> Minibatch:
         """Samples a minibatch of transitions from the buffer, without replacement.
         Note that this function does not check if enough transitions are stored, and
-        might return the same transition multiple times.
+        will return uninitialized entries if num > num_entries.
 
         Args:
             num (int): The size of the minibatch to sample.
@@ -103,5 +110,6 @@ class ReplayBuffer(CircularBuffer):
         Returns:
             Minibatch: A minibatch of randomly sampled transitions.
         """
-        minibatch_index = jax.random.randint(rng, (num,), 0, self.num_entries)
+        p = (jnp.arange(self.size) < self.num_entries) / self.num_entries
+        minibatch_index = jax.random.choice(rng, self.size, (num,), replace=False, p=p)
         return jax.tree.map(lambda arr: arr[minibatch_index], self.data)
