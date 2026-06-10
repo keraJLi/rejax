@@ -34,6 +34,11 @@ class CircularBuffer(struct.PyTreeNode):
         batch_flat, _ = jax.tree.flatten(batch)
         batch_size = batch_flat[0].shape[0]
 
+        if batch_size > self.size:
+            raise ValueError(
+                f"Batch size {batch_size} exceeds buffer size {self.size}."
+            )
+
         idx = self.index + jnp.arange(batch_size)
         idx = idx % self.size
         data = jax.tree.map(lambda arr, b: arr.at[idx].set(b), self.data, batch)
