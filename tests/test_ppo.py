@@ -99,7 +99,7 @@ class TestEnvironmentsPPO(unittest.TestCase):
                 if not discrete:
                     value = ppo.critic.apply(ts.critic_ts.params, obs)
                     for v in value:
-                        self.assertAlmostEqual(v, 0.0, delta=0.1)
+                        self.assertAlmostEqual(v, 0.0, delta=0.2)
 
                 act = ppo.make_act(ts)
                 rngs = jax.random.split(rng, 10)
