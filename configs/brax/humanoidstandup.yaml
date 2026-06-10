@@ -61,3 +61,28 @@ td3:
   target_noise_clip: 0.9
   policy_delay: 10
   normalize_observations: true
+
+mpo:
+  env: brax/humanoidstandup
+  env_params:
+    backend: mjx
+  agent_kwargs:
+    activation: relu
+    hidden_layer_sizes: [128, 128]
+  num_envs: 128
+  buffer_size: 100_000
+  fill_buffer: 8_192
+  batch_size: 1_024
+  learning_rate: 0.0004557144088299813
+  dual_learning_rate: 0.004800030693284888
+  max_grad_norm: 10
+  total_timesteps: 1_000_000
+  eval_freq: 50_000
+  gamma: 0.97
+  epsilon_mean: 0.003002011852660253
+  epsilon_stddev: 0.00000240374777000517
+  epsilon_penalty: 0.004058950837080796
+  action_penalization: false
+  num_epochs: 4
+  polyak: 0.99
+  normalize_observations: true

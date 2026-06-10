@@ -109,6 +109,41 @@ class GaussianPolicy(nn.Module):
         return action, action_dist.log_prob(action)
 
 
+class ClippedGaussianPolicy(nn.Module):
+    """Unconstrained Gaussian policy with clipped environment actions."""
+
+    action_dim: int
+    action_range: tuple[float, float]
+    hidden_layer_sizes: Sequence[int]
+    activation: Callable
+    init_scale: float = 0.7
+    min_scale: float = 1e-6
+
+    def setup(self):
+        self.features = MLP(self.hidden_layer_sizes, self.activation)
+        self.action_mean = nn.Dense(self.action_dim)
+        # Unlike other policies, we make the scale a policy head.
+        self.action_scale = nn.Dense(self.action_dim)
+
+    def _action_dist(self, obs):
+        features = self.features(obs)
+        action_mean = self.action_mean(features)
+        action_scale = jax.nn.softplus(self.action_scale(features))
+        # Maps zero scale logits to init_scale.
+        action_scale *= self.init_scale / jax.nn.softplus(0.0)
+        action_scale += self.min_scale
+        return distrax.MultivariateNormalDiag(loc=action_mean, scale_diag=action_scale)
+
+    def __call__(self, obs, rng):
+        action_dist = self._action_dist(obs)
+        action = action_dist.sample(seed=rng)
+        return action, action_dist.log_prob(action)
+
+    def act(self, obs, rng):
+        action, _ = self(obs, rng)
+        return jnp.clip(action, self.action_range[0], self.action_range[1])
+
+
 class SquashedGaussianPolicy(nn.Module):
     action_dim: int
     action_range: tuple[float, float]
@@ -265,6 +300,21 @@ class QNetwork(MLP):
     def __call__(self, obs, action):
         x = jnp.concatenate([obs.reshape(obs.shape[0], -1), action], axis=-1)
         x = super().__call__(x)
+        return nn.Dense(1)(x).squeeze(1)
+
+
+class ClippedQNetwork(nn.Module):
+    """Q-network that clips action inputs to the action spec."""
+
+    action_range: tuple[float, float]
+    hidden_layer_sizes: Sequence[int]
+    activation: Callable
+
+    @nn.compact
+    def __call__(self, obs, action):
+        action = jnp.clip(action, self.action_range[0], self.action_range[1])
+        x = jnp.concatenate([obs.reshape(obs.shape[0], -1), action], axis=-1)
+        x = MLP(self.hidden_layer_sizes, self.activation)(x)
         return nn.Dense(1)(x).squeeze(1)
 
 

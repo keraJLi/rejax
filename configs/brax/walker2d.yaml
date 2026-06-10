@@ -61,3 +61,30 @@ td3:
   target_noise_clip: 0.5
   policy_delay: 3
   normalize_observations: true
+
+mpo:
+  env: brax/walker2d
+  env_params:
+    backend: mjx
+  agent_kwargs:
+    activation: tanh
+    hidden_layer_sizes: [128, 128]
+  num_envs: 128
+  buffer_size: 250_000
+  fill_buffer: 8_192
+  batch_size: 1_024
+  learning_rate: 0.0003087421280629845
+  dual_learning_rate: 0.0002609036325004827
+  max_grad_norm: 10
+  total_timesteps: 1_000_000
+  eval_freq: 50_000
+  gamma: 0.995
+  epsilon: 0.03
+  epsilon_mean: 0.009867286134837864
+  epsilon_stddev: 0.0004563093193382472
+  epsilon_penalty: 0.000623353729161962
+  num_action_samples: 40
+  policy_eval_num_val_samples: 64
+  num_epochs: 4
+  polyak: 0.9
+  normalize_observations: true
