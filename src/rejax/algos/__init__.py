@@ -9,6 +9,7 @@ from .mixins import (
     VectorizedEnvMixin,
 )
 from .ppo import PPO
+from .ppo_amp import PPOAMP
 from .pqn import PQN
 from .sac import SAC
 from .td3 import TD3
@@ -18,6 +19,7 @@ __all__ = [
     "DQN",
     "IQN",
     "PPO",
+    "PPOAMP",
     "PQN",
     "SAC",
     "TD3",
