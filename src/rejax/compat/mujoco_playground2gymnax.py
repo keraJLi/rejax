@@ -1,11 +1,11 @@
 import warnings
 from copy import copy
 
+import mujoco_playground
 from flax import struct
 from gymnax.environments import spaces
 from gymnax.environments.environment import Environment as GymnaxEnv
 from jax import numpy as jnp
-import mujoco_playground
 
 
 def create_mujoco_playground(env_name, **kwargs):
@@ -64,8 +64,8 @@ class MujocoPlayground2GymnaxEnv(GymnaxEnv):
 
     def __deepcopy__(self, memo):
         warnings.warn(
-            f"Trying to deepcopy {type(self).__name__}, which contains a mujoco_playground env,"
-            "so a shallow copy is returned.",
+            f"Trying to deepcopy {type(self).__name__}, which contains a"
+            "mujoco_playground env, so a shallow copy is returned.",
             category=RuntimeWarning,
             stacklevel=2,
         )
