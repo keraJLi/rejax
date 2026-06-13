@@ -10,6 +10,10 @@ _create_fns = {
     "gymnasium": ("rejax.compat.gymnasium2gymnax", "create_gymnasium"),
     "kinetix": ("rejax.compat.kinetix2gymnax", "create_kinetix"),
     "craftax": ("rejax.compat.craftax2gymnax", "create_craftax"),
+    "mujoco_playground": (
+        "rejax.compat.mujoco_playground2gymnax",
+        "create_mujoco_playground",
+    ),
 }
 
 
