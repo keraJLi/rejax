@@ -47,6 +47,7 @@ class VectorizedEnvMixin(struct.PyTreeNode):
             "last_obs": obs,
             "global_step": 0,
             "last_done": jnp.zeros(self.num_envs, dtype=bool),
+            "episode_return": jnp.zeros(self.num_envs, dtype=jnp.float32),
         }
 
 
