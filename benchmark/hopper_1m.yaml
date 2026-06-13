@@ -1,7 +1,5 @@
 sac:
   env: brax/hopper
-  env_kwargs:
-    backend: positional
   agent_kwargs:
     activation: tanh
   num_envs: 128
@@ -9,18 +7,16 @@ sac:
   fill_buffer: 10_000
   batch_size: 128
   learning_rate: 0.0005720796166976961
-  gradient_steps: 128
+  num_epochs: 128
   total_timesteps: 1_000_000
   eval_freq: 32768
   gamma: 0.995
-  tau: 0.95
+  polyak: 0.95
   target_entropy_ratio: 0
-  # normalize_observations: true
+  normalize_observations: true
 
 ppo:
   env: brax/hopper
-  env_kwargs:
-    backend: positional
   agent_kwargs:
     activation: tanh
   num_envs: 32
@@ -40,8 +36,6 @@ ppo:
 
 ddpg:
   env: brax/hopper
-  env_kwargs:
-    backend: positional
   agent_kwargs:
     activation: tanh
   num_envs: 128
