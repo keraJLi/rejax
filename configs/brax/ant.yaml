@@ -36,3 +36,26 @@ ppo:
   ent_coef: 0.01
   vf_coef: 0.5
   normalize_observations: true
+
+mpo:
+  env: brax/ant
+  env_params:
+    backend: mjx
+  agent_kwargs:
+    activation: tanh
+    hidden_layer_sizes: [64, 64]
+  num_envs: 64
+  buffer_size: 100_000
+  learning_rate: 0.0008981757464998233
+  dual_learning_rate: 0.0034193499583004797
+  max_grad_norm: 10
+  total_timesteps: 1_000_000
+  eval_freq: 50_000
+  gamma: 0.97
+  epsilon: 0.03
+  epsilon_mean: 0.0008697950246790765
+  epsilon_stddev: 0.00001586288015557733
+  epsilon_penalty: 0.001918452810365241
+  num_action_samples: 10
+  target_update_freq: 1
+  normalize_observations: true

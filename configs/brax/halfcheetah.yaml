@@ -61,3 +61,28 @@ td3:
   target_noise_clip: 0.6
   policy_delay: 1
   normalize_observations: true
+
+mpo:
+  env: brax/halfcheetah
+  env_params:
+    backend: mjx
+  agent_kwargs:
+    activation: tanh
+    hidden_layer_sizes: [256, 256]
+  num_envs: 64
+  buffer_size: 250_000
+  learning_rate: 0.0006061844141000409
+  dual_learning_rate: 0.0010632863614971704
+  max_grad_norm: 1
+  total_timesteps: 1_000_000
+  eval_freq: 50_000
+  gamma: 0.97
+  epsilon_mean: 0.000514829165107886
+  epsilon_stddev: 0.00003188035017044293
+  epsilon_penalty: 0.0002840748247151449
+  num_action_samples: 40
+  policy_eval_num_val_samples: 64
+  num_epochs: 4
+  polyak: 0.9
+  target_update_freq: 1
+  normalize_observations: true

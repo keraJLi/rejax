@@ -8,6 +8,7 @@ from .mixins import (
     TargetNetworkMixin,
     VectorizedEnvMixin,
 )
+from .mpo import MPO
 from .ppo import PPO
 from .pqn import PQN
 from .sac import SAC
@@ -17,6 +18,7 @@ from .td3 import TD3
 __all__ = [
     "DQN",
     "IQN",
+    "MPO",
     "PPO",
     "PQN",
     "SAC",
