@@ -25,7 +25,7 @@ from rejax.networks import DiscreteQNetwork, EpsilonGreedyPolicy
 class Trajectory(struct.PyTreeNode):
     obs: chex.Array
     action: chex.Array
-    next_q: chex.Array
+    q_val: chex.Array  # Q(obs, ·) - the state THIS transition starts from
     reward: chex.Array
     done: chex.Array
 
@@ -110,6 +110,15 @@ class PQN(
             rng, new_rng = jax.random.split(ts.rng)
             ts = ts.replace(rng=rng)
             rng_action, rng_step = jax.random.split(new_rng)
+            # Cache Q at the state THIS transition starts from (matches
+            # purejaxql's own `q_val`, computed from `last_obs` before
+            # stepping) - not at the state it lands in. calculate_targets's
+            # backward scan needs "Q(s_i)" available at index i so it can
+            # read it directly as v_t[i-1]'s one-step bootstrap; caching
+            # Q(s_{i+1}) here instead silently feeds it the wrong state's
+            # value one step early throughout the whole trajectory. See
+            # https://github.com/keraJLi/rejax/issues/34
+            q_val = self.agent.apply(ts.q_ts.params, ts.last_obs)
             action = self.agent.apply(
                 ts.q_ts.params, ts.last_obs, rng_action, epsilon=epsilon, method="act"
             )
@@ -117,7 +126,6 @@ class PQN(
             rng_step = jax.random.split(rng_step, self.num_envs)
             transition = self.vmap_step(rng_step, ts.env_state, action, self.env_params)
             next_obs, env_state, reward, done, _ = transition
-            next_q = self.agent.apply(ts.q_ts.params, next_obs)
 
             if self.normalize_observations:
                 obs_rms_state, next_obs = self.update_and_normalize_obs(
@@ -131,7 +139,7 @@ class PQN(
                 ts = ts.replace(rew_rms_state=rew_rms_state)
 
             # Return updated state and transition
-            transition = Trajectory(ts.last_obs, action, next_q, reward, done)
+            transition = Trajectory(ts.last_obs, action, q_val, reward, done)
             ts = ts.replace(
                 env_state=env_state,
                 last_obs=next_obs,
@@ -144,22 +152,36 @@ class PQN(
         return ts, trajectories
 
     def calculate_targets(self, trajectories, max_last_q):
-        def get_target(lambda_return_and_next_q, t):
-            lambda_return, next_q = lambda_return_and_next_q
-            return_bootstrap = next_q + self.td_lambda * (lambda_return - next_q)
-            lambda_return = t.reward + (1 - t.done) * self.gamma * (return_bootstrap)
-            max_next_q = t.next_q.max(axis=1)
-            return (lambda_return, max_next_q), lambda_return
+        # v_t[i] = max_a Q(s_{i+1}, a): the one-step bootstrap target[i]
+        # needs. For i < num_steps - 1 that's simply the NEXT
+        # transition's own q_val (Q at the state it starts from, i.e.
+        # s_{i+1}); for the last step it's max_last_q, the bootstrap
+        # evaluated once after the whole rollout. Read directly at each
+        # index rather than threaded through the scan's carry (which
+        # only needs to accumulate the lambda-return itself, not the
+        # one-step value) - the previous version conflated "the
+        # bootstrap the LAST step needs" with "the bootstrap the
+        # SECOND-TO-LAST step needs", which are different values, and
+        # that error then propagated through the whole trajectory via
+        # the lambda-mixing term. See
+        # https://github.com/keraJLi/rejax/issues/34
+        max_q = trajectories.q_val.max(axis=-1)
+        v_t = jnp.concatenate((max_q[1:], max_last_q[None]), axis=0)
+        discount_t = self.gamma * (1 - trajectories.done)
 
-        max_last_q = jnp.where(trajectories.done[-1], 0, max_last_q)
-        lambda_returns = trajectories.reward[-1] + self.gamma * max_last_q
+        def get_target(lambda_return, xs):
+            reward, discount, v = xs
+            target = reward + discount * (
+                (1 - self.td_lambda) * v + self.td_lambda * lambda_return
+            )
+            return target, target
+
         _, targets = jax.lax.scan(
             get_target,
-            (lambda_returns, max_last_q),
-            jax.tree.map(lambda x: x[:-1], trajectories),
+            v_t[-1],
+            (trajectories.reward, discount_t, v_t),
             reverse=True,
         )
-        targets = jnp.concatenate((targets, lambda_returns[None]))
         return targets
 
     def update(self, ts, minibatch):
